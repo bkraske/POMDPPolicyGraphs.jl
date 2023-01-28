@@ -17,7 +17,8 @@ export
 GrzesPolicyGraph,
 policy_tree,
 equivalent_cp,
-policy2fsc
+policy2fsc,
+GenandEvalPG
 
 
 
