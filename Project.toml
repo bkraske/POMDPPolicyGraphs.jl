@@ -1,0 +1,10 @@
+name = "POMDPPolicyGraphs"
+uuid = "5b8982e0-8443-4930-881b-11e527dd11c8"
+authors = ["bkraske <bekr4901@colorado.edu>"]
+version = "0.1.0"
+
+[deps]
+GraphRecipes = "bd48cda9-67a9-57be-86fa-5b3c104eda73"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
+POMDPs = "a93abf59-7444-517b-a68a-c42f96afdd7d"
