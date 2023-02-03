@@ -18,7 +18,8 @@ GrzesPolicyGraph,
 policy_tree,
 equivalent_cp,
 policy2fsc,
-GenandEvalPG
+GenandEvalPG,
+BeliefValue
 
 
 

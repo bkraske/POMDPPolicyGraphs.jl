@@ -12,12 +12,12 @@
 """
 
 function vectorizedReward end
-function vectorizedReward(m::POMDP,s,a)
-    return [POMDPs.reward(m,s,a)]
+function vectorizedReward(m::POMDP, s, a)
+    return [POMDPs.reward(m, s, a)]
 end
 
-function vectorizedReward(m::POMDP,s,a,sp)
-    return [POMDPs.reward(m,s,a,sp)]
+function vectorizedReward(m::POMDP, s, a, sp)
+    return [POMDPs.reward(m, s, a, sp)]
 end
 
 """
@@ -30,11 +30,11 @@ end
 VecReward() = VecReward(Vector{Float64}(undef, 1))
 
 function (r::VecReward)(m, s, a, sp)
-    return r.dest .= POMDPs.reward(m,s,a,sp)
+    return r.dest .= POMDPs.reward(m, s, a, sp)
 end
 
 function (r::VecReward)(m, s, a)
-    return r.dest .= POMDPs.reward(m,s,a)
+    return r.dest .= POMDPs.reward(m, s, a)
 end
 
 
@@ -54,10 +54,10 @@ function EvalPolicyGraph end
 function EvalPolicyGraph(
     m::POMDP,
     pg::PolicyGraph;
-    tolerance::Float64 = 0.001,
-    rewardfunction = VecReward(),
-    disc = discount(m)
-    )
+    tolerance::Float64=0.001,
+    rewardfunction=VecReward(),
+    disc=discount(m)
+)
 
     #set based on the number of steps to relevant value
     # disc_io ? γ = discount(m) : γ = 0.99995
@@ -69,10 +69,10 @@ function EvalPolicyGraph(
     sp = rand(initialstate(m))
     Nn = length(pg.nodes)
     Ns = length(states(m))
-    rew_size = length(rewardfunction(m,s,a,sp))
+    rew_size = length(rewardfunction(m, s, a, sp))
     v = ones(Nn, Ns, rew_size)
     v_p = zeros(Nn, Ns, rew_size)
-    diff_mat = Array{Float64, 3}(undef, Nn, Ns, rew_size)
+    diff_mat = Array{Float64,3}(undef, Nn, Ns, rew_size)
     v_int = Vector{Float64}(undef, rew_size)
     v_tmp = copy(v_int)
     count = 0
@@ -84,25 +84,25 @@ function EvalPolicyGraph(
             for (s_idx, s) in enumerate(ordered_states(m))
                 if !isterminal(m, s)
                     a = pg.nodes[i]
-                    v_int .= 0.
+                    v_int .= 0.0
                     t_dist = transition(m, s, a)
                     for sp in support(t_dist)
-                        sp_idx = stateindex(m,sp)
-                        prob_t = pdf(t_dist,sp)
+                        sp_idx = stateindex(m, sp)
+                        prob_t = pdf(t_dist, sp)
                         r = rewardfunction(m, s, a, sp)
-                        @. v_int += prob_t*r
+                        @. v_int += prob_t * r
                         o_dist = observation(m, s, a, sp)
                         for o in support(o_dist)
-                            prob_o = pdf(o_dist,o)
-                            edge = get(pg.edges, (i,o), nothing)
+                            prob_o = pdf(o_dist, o)
+                            edge = get(pg.edges, (i, o), nothing)
                             if !isnothing(edge)
-                                @inbounds copyto!(v_tmp, @view v[edge,sp_idx,:])
-                                @. v_int += (v_tmp *= γ*prob_t*prob_o)
+                                @inbounds copyto!(v_tmp, @view v[edge, sp_idx, :])
+                                @. v_int += (v_tmp *= γ * prob_t * prob_o)
                                 # v_int += (v_tmp = γ*prob_t*prob_o*v_tmp)
                             end
                         end
                     end
-                    @inbounds copyto!(view(v_p, i,s_idx,:), v_int)
+                    @inbounds copyto!(view(v_p, i, s_idx, :), v_int)
                 end
             end
         end
@@ -123,8 +123,27 @@ end
 """
 
 function GenandEvalPG end
-function GenandEvalPG(m::POMDP,updater::Updater,pol::AlphaVectorPolicy,b0::DiscreteBelief,depth::Int;eval_tolerance::Float64=0.001,rewardfunction=POMDPs.reward)
+function GenandEvalPG(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int; eval_tolerance::Float64=0.001, rewardfunction=POMDPs.reward)
     pg = policy2fsc(m, updater, pol, b0, depth)
-    values = EvalPolicyGraph(m,pg;tolerance=eval_tolerance,rewardfunction=rewardfunction)
+    values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     return values
+end
+
+##Get value from belief and state values
+"""
+    BeliefValue(result::Array,b::DiscreteBelief)
+
+    Takes the state and node matrix from an evaluated policy graph and a Discrete Belief.
+    Returns value of initial belief using the state values of the first node in the graph.
+"""
+function BeliefValue end
+
+function BeliefValue(result::Array, b::DiscreteBelief)
+    first_node = result[1, :, :]
+    if length(support(b)) == size(first_node)[1]
+        return b.b' * first_node
+    else
+        throw("Belief and result columns are different
+              sizes: $(length(support(b))), $(size(first_node)[1])")
+    end
 end
