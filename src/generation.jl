@@ -54,8 +54,8 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         push!(node_list, i)
         if d < depth
             for o in observations(m)
-                j += 1
                 if is_nonzero_obs(m, a, b, o)
+                    j += 1
                     bp = update(updater, b, a, o)
                     push!(queue, (bp, d + 1, j))
                     push!(edge_list, (i, o) => j)
@@ -63,6 +63,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
             end
         end
     end
+    @show GrzesPolicyGraph(node_list, action_list, edge_list, 1)
     return GrzesPolicyGraph(node_list, action_list, edge_list, 1)
 end
 
@@ -73,6 +74,7 @@ function equivalent_cp(m::POMDP, n1::Int, n2::Int, pg::GrzesPolicyGraph)
     for o in observations(m)
         # if haskey(pg.edges,(n1,o)) && !haskey(pg.edges,(n2,o))
         #     return false
+        # else
         if haskey(pg.edges, (n1, o)) && !equivalent_cp(m, pg.edges[(n1, o)], pg.edges[(n2, o)], pg)
             return false
         end
@@ -166,3 +168,33 @@ end
 #     end
 #     return PolicyGraph(node_list, edge_list, n0)
 # end
+
+##CGCP Witness Method
+function CGCP_pg(m,h)
+    node1 = 1
+    edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
+    action_list = A[]
+    node_list = Int[]
+    n = 1
+    for t in h:1
+        for j in 1:length(Γ)
+            push!(node_list,n)
+            a = action(Γ[j])
+            push!(action_list,a)
+            b = belief(Γ[j])
+            if t<h
+                for o in observations(m)
+                    if is_nonzero_obs(m, a, b, o)
+                        # n2 = index of best AlphaVector for boa???
+                        # edge = observation to n2
+                    else
+                        #
+                    end
+                end
+            end
+        end
+    end
+    return
+end
+
+

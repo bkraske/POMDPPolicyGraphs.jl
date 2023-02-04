@@ -123,7 +123,9 @@ end
 """
 
 function GenandEvalPG end
-function GenandEvalPG(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int; eval_tolerance::Float64=0.001, rewardfunction=POMDPs.reward)
+function GenandEvalPG(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int;
+                         eval_tolerance::Float64=0.001, rewardfunction=VecReward())
+                         @show rewardfunction
     pg = policy2fsc(m, updater, pol, b0, depth)
     values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     return values
