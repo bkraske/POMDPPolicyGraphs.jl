@@ -12,6 +12,13 @@ struct GrzesPolicyGraph{N,E} <: Policy
     node1::Int64
 end
 
+struct CGCPPolicyGraph{N,E} <: Policy
+    nodes::Vector{Tuple{Int64,Int64}}
+    actions::N
+    edges::E
+    node1::Tuple{Int64,Int64}
+end
+
 ##Utility Functions
 """
     is_nonzero_obs(pol::Policy,a,b::DiscreteBelief,o)
@@ -63,7 +70,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
             end
         end
     end
-    @show GrzesPolicyGraph(node_list, action_list, edge_list, 1)
+    # @show GrzesPolicyGraph(node_list, action_list, edge_list, 1)
     return GrzesPolicyGraph(node_list, action_list, edge_list, 1)
 end
 
@@ -170,31 +177,60 @@ end
 # end
 
 ##CGCP Witness Method
-function CGCP_pg(m,h)
-    node1 = 1
-    edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
+function max_alpha_val_ind(Γ, b::DiscreteBelief)
+    max_ind = 1
+    max_val = -Inf
+    for (i, α) ∈ enumerate(Γ)
+        val = dot(α, b.b)
+        if val > max_val
+            max_ind = i
+            max_val = val
+        end
+    end
+    return max_ind
+end
+
+function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, h::Int) where {S,A}
+    edge_list = Dict{Tuple{Tuple{Int64,Int64},obstype(pol.pomdp)},Tuple{Int64,Int64}}()
     action_list = A[]
-    node_list = Int[]
-    n = 1
-    for t in h:1
+    node_list = Tuple{Int64,Int64}[]
+    Γ = pol.alphas
+    for t in h:-1:1
         for j in 1:length(Γ)
-            push!(node_list,n)
-            a = action(Γ[j])
-            push!(action_list,a)
-            b = belief(Γ[j])
-            if t<h
+            push!(node_list, (t, j))
+            a = pol.action_map[j]
+            push!(action_list, a)
+            b = belief(Γ[j]) #Update with witness belief, update policy struct type above
+            if t < h
                 for o in observations(m)
                     if is_nonzero_obs(m, a, b, o)
-                        # n2 = index of best AlphaVector for boa???
-                        # edge = observation to n2
+                        bp = update(updater, b, a, o)
+                        k = max_alpha_val_ind(Γ, bp)
+                        push!(edge_list, (i, o) => (t + 1, k))
                     else
-                        #
+                        push!(edge_list, (i, o) => (t + 1, k))
                     end
                 end
             end
         end
     end
-    return
+    node1 = max_alpha_val_ind(Γ, b0)
+    return CGCPPolicyGraph(node_list, action_list, edge_list, (1, node1))
 end
 
-
+function CGCP2PG(pg::CGCPPolicyGraph)
+    o2n = Dict(pg.nodes .=> 1:length(pg.nodes))
+    action_list = []
+    for n in pg.nodes
+        push!(action_list, pg.actions[n])
+    end
+    edge_list = Dict()
+    for (k, v) in pg.edges
+        n1 = k[1]
+        o = k[2]
+        if n1 ∈ pg.nodes || v ∈ pg.nodes
+            push!(edge_list, (o2n[n1], o) => o2n[v])
+        end
+    end
+    return PolicyGraph(action_list, edge_list, 1)
+end
