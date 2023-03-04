@@ -47,6 +47,25 @@ function is_nonzero_obs(pomdp::POMDP, a, b::DiscreteBelief, o)
     return optot > 0
 end
 
+function is_nonzero_obs(pomdp::POMDP, a, b::SparseVector{Float64, Int64}, o)
+    optot = 0.0
+    for (i, obs_prob) in enumerate(b)
+        if obs_prob > 0
+            s = ordered_states(pomdp)[i]
+            td = transition(pomdp, s, a)
+            for (sp, tp) in weighted_iterator(td)
+                if tp > 0
+                    op = obs_weight(pomdp, s, a, sp, o) # shortcut for observation probability from POMDPModelTools
+                elseif tp == 0
+                    op = 0.0
+                end
+                optot += op
+            end
+        end
+    end
+    return optot > 0
+end
+
 ##Grzes Methods
 function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int) where {S,A}
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
@@ -190,17 +209,32 @@ function max_alpha_val_ind(Γ, b::DiscreteBelief)
     return max_ind
 end
 
-function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, h::Int) where {S,A}
+function max_alpha_val_ind(Γ, b::SparseVector{Float64,Int64})
+    max_ind = 1
+    max_val = -Inf
+    for (i, α) ∈ enumerate(Γ)
+        val = dot(α, b)
+        if val > max_val
+            max_ind = i
+            max_val = val
+        end
+    end
+    return max_ind
+end
+
+function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, beliefs, depths::Vector{Int}) where {S,A}
     edge_list = Dict{Tuple{Tuple{Int64,Int64},obstype(pol.pomdp)},Tuple{Int64,Int64}}()
     action_list = A[]
     node_list = Tuple{Int64,Int64}[]
-    Γ = pol.alphas
+    h = maximum(depths)
     for t in h:-1:1
+        inds = findall(x->x==t,depths)
+        Γ = pol.alphas[inds]
         for j in 1:length(Γ)
             push!(node_list, (t, j))
             a = pol.action_map[j]
             push!(action_list, a)
-            b = belief(Γ[j]) #Update with witness belief, update policy struct type above
+            b = DiscreteBelief(m,Vector(beliefs[j]))
             if t < h
                 for o in observations(m)
                     if is_nonzero_obs(m, a, b, o)
@@ -214,7 +248,9 @@ function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, b0::Di
             end
         end
     end
-    node1 = max_alpha_val_ind(Γ, b0)
+    ind = findall(x->x==0,depths)
+    @assert length(ind)==1
+    node1 = max_alpha_val_ind(Γ, beliefs[ind])
     return CGCPPolicyGraph(node_list, action_list, edge_list, (1, node1))
 end
 

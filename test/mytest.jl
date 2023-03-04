@@ -17,3 +17,4 @@ t_b0 = initialize_belief(t_up,initialstate(tiger))
 # t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol, t_b0, 5)
 
 
+tpg = POMDPPolicyGraphs.CGCP_pg(tiger, t_up, t_pol...)

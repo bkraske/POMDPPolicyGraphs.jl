@@ -8,6 +8,7 @@ using POMDPs
 using POMDPTools
 using LinearAlgebra
 using GraphRecipes
+using SparseArrays
 
 include("generation.jl")
 include("evaluation.jl")
