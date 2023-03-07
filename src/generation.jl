@@ -230,19 +230,21 @@ function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, belief
     for t in h:-1:1
         inds = findall(x->x==t,depths)
         Γ = pol.alphas[inds]
+        a_lst = pol.action_map[inds]
+        b_lst = beliefs[inds]
         for j in 1:length(Γ)
             push!(node_list, (t, j))
-            a = pol.action_map[j]
+            a = a_lst[j]
             push!(action_list, a)
-            b = DiscreteBelief(m,Vector(beliefs[j]))
+            b = DiscreteBelief(m,Vector(b_lst[j]))
             if t < h
                 for o in observations(m)
                     if is_nonzero_obs(m, a, b, o)
                         bp = update(updater, b, a, o)
                         k = max_alpha_val_ind(Γ, bp)
-                        push!(edge_list, (i, o) => (t + 1, k))
+                        push!(edge_list, ((t, j), o) => (t + 1, k))
                     else
-                        push!(edge_list, (i, o) => (t + 1, k))
+                        push!(edge_list, ((t, j), o) => (t + 1, k))
                     end
                 end
             end
@@ -250,16 +252,13 @@ function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, belief
     end
     ind = findall(x->x==0,depths)
     @assert length(ind)==1
-    node1 = max_alpha_val_ind(Γ, beliefs[ind])
+    node1 = max_alpha_val_ind(pol.alphas[ind], beliefs[ind...])
     return CGCPPolicyGraph(node_list, action_list, edge_list, (1, node1))
 end
 
 function CGCP2PG(pg::CGCPPolicyGraph)
     o2n = Dict(pg.nodes .=> 1:length(pg.nodes))
-    action_list = []
-    for n in pg.nodes
-        push!(action_list, pg.actions[n])
-    end
+    action_list = pg.actions
     edge_list = Dict()
     for (k, v) in pg.edges
         n1 = k[1]
