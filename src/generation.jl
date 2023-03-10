@@ -227,24 +227,38 @@ function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, belief
     action_list = A[]
     node_list = Tuple{Int64,Int64}[]
     h = maximum(depths)
-    for t in h:-1:1
+    for t in h:-1:0
         inds = findall(x->x==t,depths)
-        Γ = pol.alphas[inds]
+        # @show pol.alphas[inds] .=> pol.action_map[inds]
+        Γt = pol.alphas[inds]
+        indstp1 = findall(x->x==t+1,depths)
+        # @show  pol.alphas[indstp1] .=> pol.action_map[indstp1]
+        Γtp1 = pol.alphas[indstp1]
         a_lst = pol.action_map[inds]
         b_lst = beliefs[inds]
-        for j in 1:length(Γ)
+        # println("Depth $t==================")
+        for j in 1:length(Γt)
+            # println("Index $j, action $(a_lst[j])==================")
             push!(node_list, (t, j))
             a = a_lst[j]
             push!(action_list, a)
+            # @show a
             b = DiscreteBelief(m,Vector(b_lst[j]))
+            # @show b
             if t < h
                 for o in observations(m)
+                    # println("Observation $o")
                     if is_nonzero_obs(m, a, b, o)
                         bp = update(updater, b, a, o)
-                        k = max_alpha_val_ind(Γ, bp)
+                        # @show bp
+                        k = max_alpha_val_ind(Γtp1, bp)
+                        # @show Γtp1
+                        # @show pol.action_map[indstp1]
+                        # @show pol.action_map[indstp1][k]
+                        # @show ((t, j), o) => (t + 1, k)
                         push!(edge_list, ((t, j), o) => (t + 1, k))
                     else
-                        push!(edge_list, ((t, j), o) => (t + 1, k))
+                        push!(edge_list, ((t, j), o) => (t + 1, 1))
                     end
                 end
             end
@@ -253,7 +267,7 @@ function CGCP_pg(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, belief
     ind = findall(x->x==0,depths)
     @assert length(ind)==1
     node1 = max_alpha_val_ind(pol.alphas[ind], beliefs[ind...])
-    return CGCPPolicyGraph(node_list, action_list, edge_list, (1, node1))
+    return CGCPPolicyGraph(node_list, action_list, edge_list, (0, node1))
 end
 
 function CGCP2PG(pg::CGCPPolicyGraph)
@@ -265,7 +279,9 @@ function CGCP2PG(pg::CGCPPolicyGraph)
         o = k[2]
         if n1 ∈ pg.nodes || v ∈ pg.nodes
             push!(edge_list, (o2n[n1], o) => o2n[v])
+        else
+            throw("$n1 or $v not in node list")
         end
     end
-    return PolicyGraph(action_list, edge_list, 1)
+    return PolicyGraph(action_list, edge_list, o2n[pg.node1])
 end

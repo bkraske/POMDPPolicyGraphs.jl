@@ -140,8 +140,9 @@ end
 """
 function BeliefValue end
 
-function BeliefValue(result::Array, b::DiscreteBelief)
-    first_node = result[1, :, :]
+function BeliefValue(pg,result::Array, b::DiscreteBelief)
+    i = pg.node1
+    first_node = result[i, :, :]
     if length(support(b)) == size(first_node)[1]
         return b.b' * first_node
     else
