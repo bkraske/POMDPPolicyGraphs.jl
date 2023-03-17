@@ -29,6 +29,12 @@ function next_nodes(m,pg,ind)
     children = []
     for o in observations(m)
         push!(children,o=>pg.edges[(ind,o)])
+        if isa(pg,PolicyGraph)
+            println(pg.nodes[pg.edges[(ind,o)]])
+        elseif isa(pg,CGCPPolicyGraph)
+            println(pg.actions[pg.edges[(ind,o)][2]])
+        end
     end
+
     return children
 end

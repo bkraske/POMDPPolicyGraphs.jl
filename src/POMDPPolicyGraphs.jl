@@ -20,7 +20,8 @@ policy_tree,
 equivalent_cp,
 policy2fsc,
 GenandEvalPG,
-BeliefValue
+BeliefValue,
+CGCP_pg2
 
 
 

@@ -17,8 +17,9 @@ t_b0 = initialize_belief(t_up,initialstate(tiger))
 # t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol, t_b0, 5)
 
 
-tpgc = POMDPPolicyGraphs.CGCP_pg(tiger, t_up, t_pol...)
+tpgc = POMDPPolicyGraphs.CGCP_pg2(tiger, t_up, t_pol...)
 tpg = POMDPPolicyGraphs.CGCP2PG(tpgc)
+tpg1 = policy2fsc(tiger, tpg)
 tpt = POMDPPolicyGraphs.policy_tree(tiger, t_up, t_pol[1], t_b0, 7)
 tpg2 = policy2fsc(tiger, t_up, t_pol[1], t_b0, 5)
 

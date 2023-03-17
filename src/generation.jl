@@ -285,3 +285,98 @@ function CGCP2PG(pg::CGCPPolicyGraph)
     end
     return PolicyGraph(action_list, edge_list, o2n[pg.node1])
 end
+
+
+function CGCP_pg2(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, beliefs, depths::Vector{Int}) where {S,A}
+    edge_list = Dict{Tuple{Tuple{Int64,Int64},obstype(pol.pomdp)},Tuple{Int64,Int64}}()
+    action_list = A[]
+    node_list = Tuple{Int64,Int64}[]
+    h = maximum(depths)
+    Γ = pol.alphas
+    a_lst = pol.action_map
+    b_lst = beliefs
+    for t in 0:1:h #h:-1:0
+        for j in 1:length(Γ)
+            # println("Index $j, action $(a_lst[j])==================")
+            push!(node_list, (t, j))
+            a = a_lst[j]
+            push!(action_list, a)
+            # @show a
+            b = DiscreteBelief(m,Vector(b_lst[j]))
+            # @show b
+            if t < h
+                for o in observations(m)
+                    # println("Observation $o")
+                    if is_nonzero_obs(m, a, b, o)
+                        # @show b
+                        # @show o
+                        bp = update(updater, b, a, o)
+                        # @show bp
+                        k = max_alpha_val_ind(Γ, bp)
+                        # @show Γtp1
+                        # @show pol.action_map[indstp1]
+                        # @show k
+                        # @show pol.action_map[k]
+                        # @show ((t, j), o) => (t + 1, k)
+                        push!(edge_list, ((t, j), o) => (t + 1, k))
+                    else
+                        push!(edge_list, ((t, j), o) => (t + 1, 1))
+                    end
+                end
+            end
+        end
+    end
+    ind = findall(x->x==0,depths)
+    @assert length(ind)==1
+    node1 = max_alpha_val_ind(pol.alphas[ind], beliefs[ind...])
+    return CGCPPolicyGraph(node_list, action_list, edge_list, (0, node1))
+end
+
+function equivalent_cp(m::POMDP, n1::Int, n2::Int, pg)
+    if pg.nodes[n1] != pg.nodes[n2]
+        return false
+    end
+    for o in observations(m)
+        # if haskey(pg.edges,(n1,o)) && !haskey(pg.edges,(n2,o))
+        #     return false
+        # else
+        if haskey(pg.edges, (n1, o)) && !equivalent_cp(m, pg.edges[(n1, o)], pg.edges[(n2, o)], pg)
+            return false
+        end
+    end
+    return true
+end
+
+function pg_children!(children::Vector, m::POMDP, node::Int, pg)
+    for o in observations(m)
+        if haskey(pg.edges, (node, o))
+            if pg.edges[(node, o)] ∉ children
+                push!(children, pg.edges[(node, o)])
+                pg_children!(children, m, pg.edges[(node, o)], pg)
+            end
+        end
+    end
+end
+
+function policy2fsc(m::POMDP, pg)
+    pg = deepcopy(pg)
+    for n_i in 1:length(pg.edges)
+        if n_i ∈ pg.nodes
+            for n_j in 1:length(pg.edges)
+                if n_j ∈ pg.nodes && n_j < n_i
+                    if equivalent_cp(m, n_i, n_j, pg)
+                        nodes_rm = [n_i]
+                        pg_children!(nodes_rm, m, n_i, pg)
+                        deleteat!(pg.nodes, findall(x -> x ∈ nodes_rm, pg.nodes))
+                        for n in 1:length(pg.actions), o in observations(m)
+                            if haskey(pg.edges, (n, o)) && pg.edges[(n, o)] == n_i
+                                push!(pg.edges, (n, o) => n_j)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return pg
+end
