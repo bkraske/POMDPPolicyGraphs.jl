@@ -25,3 +25,5 @@ tpg2 = policy2fsc(tiger, t_up, t_pol[1], t_b0, 5)
 
 val1 = POMDPPolicyGraphs.EvalPolicyGraph(tiger, tpg)
 val2 = POMDPPolicyGraphs.EvalPolicyGraph(tiger, tpg2)
+
+pg_val = BeliefValue(tiger, t_up, t_pol[1], t_b0, 5)

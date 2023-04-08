@@ -340,6 +340,10 @@ function equivalent_cp(m::POMDP, n1::Int, n2::Int, pg)
         # if haskey(pg.edges,(n1,o)) && !haskey(pg.edges,(n2,o))
         #     return false
         # else
+        @show (n1, o)
+        @show pg.edges[(n1, o)]
+        @show (n2, o)
+        @show pg.edges[(n2, o)]
         if haskey(pg.edges, (n1, o)) && !equivalent_cp(m, pg.edges[(n1, o)], pg.edges[(n2, o)], pg)
             return false
         end
