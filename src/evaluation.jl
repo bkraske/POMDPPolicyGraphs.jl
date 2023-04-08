@@ -162,8 +162,8 @@ function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
     values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     i = pg.node1
     first_node = values[i, :, :]
-    if length(support(b)) == size(first_node)[1]
-        return b.b' * first_node
+    if length(support(b0)) == size(first_node)[1]
+        return b0.b' * first_node
     else
         throw("Belief and result columns are different
               sizes: $(length(support(b))), $(size(first_node)[1])")
