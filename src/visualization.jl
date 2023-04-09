@@ -38,3 +38,14 @@ function next_nodes(m,pg,ind)
 
     return children
 end
+
+function has_node_number(pg,node)
+    edges = []
+    for edge in pg.edges
+        kn = first(edge)
+        if kn[1]==node
+            push!(edges,edge)
+        end
+    end
+    return edges
+end
