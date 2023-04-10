@@ -45,6 +45,10 @@ gw_pol = solve(solver, po_gw)
 gw_up = DiscreteUpdater(po_gw)
 gw_b0 = initialize_belief(gw_up,initialstate(po_gw))
 
-pg = policy2fsc(po_gw, gw_up, gw_pol[1], gw_b0, 5)
+# pg = policy2fsc(po_gw, gw_up, gw_pol[1], gw_b0, 5)
+# PG_reward(m::ConstrainedPOMDPWrapper, s, a, sp) =  PG_reward(m, s, a)
 
-pg_val = BeliefValue(po_gw, gw_up, gw_pol[1], gw_b0, 5)
+# function PG_reward(m::ConstrainedPOMDPWrapper,s,a)
+#     return [reward(m.m, s, a), ConstrainedPOMDPs.cost(m.m,s,a)...]
+# end
+pg_val = BeliefValue(po_gw, gw_up, gw_pol[1], gw_b0, 6)
