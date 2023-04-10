@@ -40,15 +40,21 @@ po_gw = ConstrainedPOMDPModels.GridWorldPOMDP(size=(5, 5),
     rewards=Dict(ConstrainedPOMDPModels.GWPos(5, 5) => 10.0),
     tprob=1.0)
 c_gw = ConstrainedPOMDPs.Constrain(po_gw, [1.0])
-solver2 = PBVISolver(max_time=20.0)
-gw_pol = solve(solver, po_gw)
+solver2 = PBVISolver(max_time=10.0)
+
 gw_up = DiscreteUpdater(po_gw)
 gw_b0 = initialize_belief(gw_up,initialstate(po_gw))
 
-# pg = policy2fsc(po_gw, gw_up, gw_pol[1], gw_b0, 5)
-# PG_reward(m::ConstrainedPOMDPWrapper, s, a, sp) =  PG_reward(m, s, a)
+pg = policy2fsc(po_gw, gw_up, gw_pol[1], gw_b0, 5)
+PG_reward(m::ConstrainedPOMDPWrapper, s, a, sp) =  PG_reward(m, s, a)
 
 # function PG_reward(m::ConstrainedPOMDPWrapper,s,a)
 #     return [reward(m.m, s, a), ConstrainedPOMDPs.cost(m.m,s,a)...]
 # end
+
+function POMDPs.reward(m::ConstrainedPOMDPModels.GridWorldPOMDP, s, a)
+    return reward(m.mdp, s, a) - [1]'*ConstrainedPOMDPs.cost(c_gw,s,a)
+end
+gw_pol = solve(solver, po_gw)
+
 pg_val = BeliefValue(c_gw, gw_up, gw_pol[1], gw_b0, 6)

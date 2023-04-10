@@ -79,7 +79,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         num_outer += 1
         b, d, i = popfirst!(queue)
         a = action(pol, b)
-        @show a
+        # @show a
         push!(action_list, a)
         push!(node_list, i)
         if d < depth
@@ -94,13 +94,13 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
                 end
             end
         end
-        @show b,d,i
-        @show num_nnz
-        if num_outer >10
-            break
-        end
+        # @show b,d,i
+        # @show num_nnz
+        # if num_outer >10
+        #     break
+        # end
     end
-    @show num_outer
+    # @show num_outer
     # @show GrzesPolicyGraph(node_list, action_list, edge_list, 1)
     return GrzesPolicyGraph(node_list, action_list, edge_list, 1)
 end
