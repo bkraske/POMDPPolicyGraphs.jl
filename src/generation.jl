@@ -80,7 +80,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         push!(node_list, i)
         if d < depth
             for o in observations(m)
-                @show length(observations(m))
+                # @show length(observations(m))
                 if is_nonzero_obs(m, a, b, o)
                     j += 1
                     bp = update(updater, b, a, o)
