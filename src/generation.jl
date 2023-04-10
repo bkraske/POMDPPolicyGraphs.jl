@@ -154,7 +154,9 @@ function gpg2pg(pg::GrzesPolicyGraph)
 end
 
 function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int)
+    println("Build Tree")
     pg = policy_tree(m, updater, pol, b0, depth)
+    println("Condense Tree")
     for n_i in 1:length(pg.edges)
         if n_i ∈ pg.nodes
             for n_j in 1:length(pg.edges)
@@ -173,6 +175,7 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
             end
         end
     end
+    println("Convert Tree")
     npg = gpg2pg(pg)
     # r_mat = reward_matrix(SparseTabularPOMDP(m))
     # r_max = maximum(r_mat)
