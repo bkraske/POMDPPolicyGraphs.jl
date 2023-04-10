@@ -40,7 +40,7 @@ po_gw = ConstrainedPOMDPModels.GridWorldPOMDP(size=(5, 5),
     rewards=Dict(ConstrainedPOMDPModels.GWPos(5, 5) => 10.0),
     tprob=1.0)
 c_gw = ConstrainedPOMDPs.Constrain(po_gw, [1.0])
-solver2 = PBVISolver(max_iter=5)
+solver2 = PBVISolver(max_time=20.0)
 gw_pol = solve(solver, po_gw)
 gw_up = DiscreteUpdater(po_gw)
 gw_b0 = initialize_belief(gw_up,initialstate(po_gw))

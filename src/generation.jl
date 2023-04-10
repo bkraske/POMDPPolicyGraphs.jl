@@ -79,6 +79,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         num_outer += 1
         b, d, i = popfirst!(queue)
         a = action(pol, b)
+        @show a
         push!(action_list, a)
         push!(node_list, i)
         if d < depth
