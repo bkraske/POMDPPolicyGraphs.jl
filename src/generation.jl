@@ -73,7 +73,10 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
     node_list = Int[]
     j = 1
     queue = [(b0, 0, j)]
+    num_outer = 0
+    num_nnz = 0
     while !isempty(queue)
+        num_outer += 1
         b, d, i = popfirst!(queue)
         a = action(pol, b)
         push!(action_list, a)
@@ -82,6 +85,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
             for o in observations(m)
                 # @show length(observations(m))
                 if is_nonzero_obs(m, a, b, o)
+                    num_nnz += 1
                     j += 1
                     bp = update(updater, b, a, o)
                     push!(queue, (bp, d + 1, j))
@@ -90,6 +94,8 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
             end
         end
     end
+    @show num_nnz
+    @show num_outer
     # @show GrzesPolicyGraph(node_list, action_list, edge_list, 1)
     return GrzesPolicyGraph(node_list, action_list, edge_list, 1)
 end
