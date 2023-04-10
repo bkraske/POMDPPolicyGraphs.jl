@@ -80,6 +80,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         push!(node_list, i)
         if d < depth
             for o in observations(m)
+                @show length(observations(m))
                 if is_nonzero_obs(m, a, b, o)
                     j += 1
                     bp = update(updater, b, a, o)
@@ -159,7 +160,7 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
     @show length(pg.nodes)
     println("Condense Tree")
     for n_i in 1:length(pg.edges)
-        @show n_i
+        # @show n_i
         if n_i ∈ pg.nodes
             for n_j in 1:length(pg.edges)
                 # @show n_j
