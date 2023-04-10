@@ -158,8 +158,10 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
     pg = policy_tree(m, updater, pol, b0, depth)
     println("Condense Tree")
     for n_i in 1:length(pg.edges)
+        @show n_i
         if n_i ∈ pg.nodes
             for n_j in 1:length(pg.edges)
+                @show n_j
                 if n_j ∈ pg.nodes && n_j < n_i
                     if equivalent_cp(m, n_i, n_j, pg)
                         nodes_rm = [n_i]
