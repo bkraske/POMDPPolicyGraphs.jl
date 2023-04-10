@@ -98,13 +98,17 @@ function equivalent_cp(m::POMDP, n1::Int, n2::Int, pg::GrzesPolicyGraph)
         return false
     end
     for o in observations(m)
-        if haskey(pg.edges, (n1, o)) #check if the observation has an edge
-            # if haskey(pg.edges,(n1,o)) && !haskey(pg.edges,(n2,o))
-            #     return false
-            # else
-            if haskey(pg.edges, (n1, o)) && !equivalent_cp(m, pg.edges[(n1, o)], pg.edges[(n2, o)], pg)
+        if haskey(pg.edges, (n1, o)) 
+            #check if the observation corresponds to an edge on node 1
+            if !haskey(pg.edges,(n2,o)) 
+                #check if the observation corresponds to an edge on node 2
+                return false
+            elseif !equivalent_cp(m, pg.edges[(n1, o)], pg.edges[(n2, o)], pg)
                 return false
             end
+        elseif haskey(pg.edges, (n2, o)) 
+            #check if the observation corresponds to an edge on node 2 if it doesn't on n1
+            return false
         end
     end
     return true
