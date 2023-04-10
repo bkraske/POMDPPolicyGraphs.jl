@@ -93,6 +93,7 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
                 end
             end
         end
+        @show b,d,i
         @show num_nnz
         if num_outer >10
             break
