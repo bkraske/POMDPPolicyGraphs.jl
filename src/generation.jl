@@ -129,9 +129,10 @@ end
 function pg_children!(children::Vector, m::POMDP, node::Int, pg::GrzesPolicyGraph)
     for o in observations(m)
         if haskey(pg.edges, (node, o))
-            if pg.edges[(node, o)] ∉ children
-                push!(children, pg.edges[(node, o)])
-                pg_children!(children, m, pg.edges[(node, o)], pg)
+            new_node = pg.edges[(node, o)]
+            if new_node ∉ children
+                push!(children, new_node)
+                pg_children!(children, m, new_node, pg)
             end
         end
     end
@@ -166,20 +167,23 @@ function gpg2pg(pg::GrzesPolicyGraph)
 end
 
 function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int)
-    println("Build Tree")
+    # println("Build Tree")
     pg = policy_tree(m, updater, pol, b0, depth)
-    @show length(pg.nodes)
-    println("Condense Tree")
-    for n_i in 1:length(pg.edges)
+    # @show length(pg.nodes)
+    # println("Condense Tree")
+    node_l = length(pg.nodes)
+    for n_i in 1:node_l #length(pg.edges)
         # @show n_i
         if n_i ∈ pg.nodes
-            for n_j in 1:length(pg.edges)
+            for n_j in 1:(n_i-1)#1:node_l #length(pg.edges)
                 # @show n_j
-                if n_j ∈ pg.nodes && n_j < n_i
+                if n_j ∈ pg.nodes #n_j < n_i && n_j ∈ pg.nodes
                     if equivalent_cp(m, n_i, n_j, pg)
                         nodes_rm = [n_i]
                         pg_children!(nodes_rm, m, n_i, pg)
-                        deleteat!(pg.nodes, findall(x -> x ∈ nodes_rm, pg.nodes))
+                        # deleteat!(pg.nodes, findall(x -> x ∈ nodes_rm, pg.nodes))
+                        filter!(x -> x ∉ nodes_rm, pg.nodes)
+                        # deleteat!(pg.nodes, pg.nodes .∈ nodes_rm)
                         for n in 1:length(pg.actions), o in observations(m)
                             if haskey(pg.edges, (n, o)) && pg.edges[(n, o)] == n_i
                                 push!(pg.edges, (n, o) => n_j)
@@ -190,7 +194,7 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
             end
         end
     end
-    println("Convert Tree")
+    # println("Convert Tree")
     npg = gpg2pg(pg)
     # r_mat = reward_matrix(SparseTabularPOMDP(m))
     # r_max = maximum(r_mat)
