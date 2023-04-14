@@ -169,3 +169,21 @@ function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
               sizes: $(length(support(b))), $(size(first_node)[1])")
     end
 end
+
+function TreeBeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
+    b0::DiscreteBelief, depth::Int;
+    eval_tolerance::Float64=0.001, rewardfunction=VecReward())
+    @show rewardfunction
+    println("Generate PG")
+    pg = policy_tree_pg(m, updater, pol, b0, depth)
+    println("Evaluate PG")
+    values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    i = pg.node1
+    first_node = values[i, :, :]
+    if length(support(b0)) == size(first_node)[1]
+        return b0.b' * first_node
+    else
+        throw("Belief and result columns are different
+        sizes: $(length(support(b))), $(size(first_node)[1])")
+    end
+end

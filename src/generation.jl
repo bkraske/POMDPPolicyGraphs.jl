@@ -166,22 +166,28 @@ function gpg2pg(pg::GrzesPolicyGraph)
     return PolicyGraph(action_list, edge_list, 1)
 end
 
+function tree2pg(tree::GrzesPolicyGraph)
+    return PolicyGraph(tree.actions, tree.edges, tree.node1)
+end
+
 function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int)
     # println("Build Tree")
     pg = policy_tree(m, updater, pol, b0, depth)
     # @show length(pg.nodes)
     # println("Condense Tree")
     node_l = length(pg.nodes)
+    big_rm_list = Int64[]
     for n_i in 1:node_l #length(pg.edges)
         # @show n_i
-        if n_i ∈ pg.nodes
+        if n_i ∈ pg.nodes #&& n_i ∉ big_rm_list
             for n_j in 1:(n_i-1)#1:node_l #length(pg.edges)
                 # @show n_j
-                if n_j ∈ pg.nodes #n_j < n_i && n_j ∈ pg.nodes
+                if n_j ∈ pg.nodes #&& n_j ∉ big_rm_list #n_j < n_i && n_j ∈ pg.nodes
                     if equivalent_cp(m, n_i, n_j, pg)
                         nodes_rm = [n_i]
                         pg_children!(nodes_rm, m, n_i, pg)
                         # deleteat!(pg.nodes, findall(x -> x ∈ nodes_rm, pg.nodes))
+                        # append!(big_rm_list,nodes_rm)
                         filter!(x -> x ∉ nodes_rm, pg.nodes)
                         # deleteat!(pg.nodes, pg.nodes .∈ nodes_rm)
                         for n in 1:length(pg.actions), o in observations(m)
@@ -194,6 +200,7 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
             end
         end
     end
+    # filter!(x -> x ∉ big_rm_list, pg.nodes)
     # println("Convert Tree")
     npg = gpg2pg(pg)
     # r_mat = reward_matrix(SparseTabularPOMDP(m))
@@ -201,6 +208,12 @@ function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief,
     # r_min = minimum(r_mat)
     # loss = discount(m)^depth * (r_max - r_min) / (1 - discount(m))
     # @info "Initial Belief Value Loss is $loss"
+    return npg
+end
+
+function policy2tree(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int)
+    pg = policy_tree(m, updater, pol, b0, depth)
+    npg = tree2pg(pg)
     return npg
 end
 
@@ -407,4 +420,31 @@ function policy2fsc(m::POMDP, pg)
         end
     end
     return pg
+end
+
+function policy_tree_pg(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int) where {S,A}
+    edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
+    action_list = A[]
+    j = 1
+    queue = [(b0, 0, j)]
+    num_outer = 0
+    while !isempty(queue)
+        num_nnz = 0
+        num_outer += 1
+        b, d, i = popfirst!(queue)
+        a = action(pol, b)
+        push!(action_list, a)
+        if d < depth
+            for o in observations(m)
+                if is_nonzero_obs(m, a, b, o)
+                    num_nnz += 1
+                    j += 1
+                    bp = update(updater, b, a, o)
+                    push!(queue, (bp, d + 1, j))
+                    push!(edge_list, (i, o) => j)
+                end
+            end
+        end
+    end
+    return PolicyGraph(action_list, edge_list, 1)
 end
