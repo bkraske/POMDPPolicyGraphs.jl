@@ -448,3 +448,38 @@ function policy_tree_pg(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::Discre
     end
     return PolicyGraph(action_list, edge_list, 1)
 end
+
+function recursive_evaluation(m::POMDP{S,A}, updater::Updater, pol::Policy, rew_f::Function, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+    d = 0
+    while d<depth
+        
+
+    return 
+end
+
+function recursive_evaluation(m::POMDP{S,A}, updater::Updater, pol::Policy, rew_f::Function, r_dim::Int64,b::DiscreteBelief, depth::Int, d::Int) where {S,A}
+    a = action(pol, b)
+    rew = zeros(r_dim)
+    for (s,w) in weighted_iterator(b)
+        if !isterminal(m,s)
+            for (sp,w2) in weighted_iterator(transition(m,s,a))
+                rew += w*w2*rew_f(pomdp,s,a,sp)
+            end
+        end
+    end
+    if d < depth
+        child_values = zeros(r_dim)
+        for o in observations(m)
+            if is_nonzero_obs(m, a, b, o)
+                bp = update(updater, b, a, o)
+                child_values += recursive_evaluation(m, updater, pol, rew_f, r_dim, bp, depth, d+1)
+            end
+        end
+        child_values = discount(m)*child_values
+    else
+        child_values = 0.0
+    end
+    value = rew + child_values
+    return value
+end
+    
