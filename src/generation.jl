@@ -449,37 +449,33 @@ function policy_tree_pg(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::Discre
     return PolicyGraph(action_list, edge_list, 1)
 end
 
-function recursive_evaluation(m::POMDP{S,A}, updater::Updater, pol::Policy, rew_f::Function, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
     d = 0
-    while d<depth
-        
-
-    return 
+    r_dim = length(rew_f(pomdp,states(pomdp)[1],actions(pomdp)[1],states(pomdp)[1]))
+    r = recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, b, depth, d)
+    return r
 end
 
-function recursive_evaluation(m::POMDP{S,A}, updater::Updater, pol::Policy, rew_f::Function, r_dim::Int64,b::DiscreteBelief, depth::Int, d::Int) where {S,A}
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::DiscreteBelief, depth::Int, d::Int) where {S,A}
     a = action(pol, b)
-    rew = zeros(r_dim)
-    for (s,w) in weighted_iterator(b)
-        if !isterminal(m,s)
-            for (sp,w2) in weighted_iterator(transition(m,s,a))
-                rew += w*w2*rew_f(pomdp,s,a,sp)
+    value = zeros(r_dim)
+    for (s,w1) in weighted_iterator(b)
+        if !isterminal(pomdp,s) && w1 > 0
+            for (sp,w2) in weighted_iterator(transition(pomdp,s,a))
+                if w2 > 0 
+                    value +=  w1*w2*rew_f(pomdp,s,a,sp)
+                    if d<depth
+                        for (o,w3) in weighted_iterator(observation(pomdp, s, a, sp))
+                            if w3 > 0
+                                bp = update(updater, b, a, o)
+                                value +=  w1*w2*w3*discount(pomdp)*recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
+                            end
+                        end
+                    end
+                end
             end
         end
     end
-    if d < depth
-        child_values = zeros(r_dim)
-        for o in observations(m)
-            if is_nonzero_obs(m, a, b, o)
-                bp = update(updater, b, a, o)
-                child_values += recursive_evaluation(m, updater, pol, rew_f, r_dim, bp, depth, d+1)
-            end
-        end
-        child_values = discount(m)*child_values
-    else
-        child_values = 0.0
-    end
-    value = rew + child_values
     return value
 end
     
