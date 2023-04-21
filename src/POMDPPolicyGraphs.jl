@@ -21,7 +21,9 @@ equivalent_cp,
 policy2fsc,
 GenandEvalPG,
 BeliefValue,
-CGCP_pg2
+CGCP_pg2,
+recursive_evaluation,
+VecReward
 
 
 

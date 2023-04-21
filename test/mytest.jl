@@ -60,3 +60,5 @@ PG_reward(m::ConstrainedPOMDPWrapper, s, a, sp) =  PG_reward(m, s, a)
 # gw_pol = solve(solver, po_gw)
 
 # pg_val = BeliefValue(c_gw, gw_up, gw_pol[1], gw_b0, 6)
+
+value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 5)
