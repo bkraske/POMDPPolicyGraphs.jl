@@ -62,3 +62,7 @@ PG_reward(m::ConstrainedPOMDPWrapper, s, a, sp) =  PG_reward(m, s, a)
 # pg_val = BeliefValue(c_gw, gw_up, gw_pol[1], gw_b0, 6)
 
 value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 5)
+queue = [Sim(tiger,t_pol[1],t_up,t_b0,max_steps=5) for i in 1:5000]
+run(queue) do sim, hist
+    return (reward=discounted_reward(hist))
+end

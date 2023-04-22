@@ -467,7 +467,8 @@ function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, 
                     for (o,w3) in weighted_iterator(observation(pomdp, s, a, sp))
                         if w3 > 0
                             bp = update(updater, b, a, o)
-                            value +=  w1*w2*w3*discount(pomdp)*recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
+                            value +=  w1*w2*w3*discount(pomdp)*
+                                        recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
                         end
                     end
                 end
