@@ -61,10 +61,10 @@ t_b0 = initialize_belief(t_up,initialstate(tiger))
 
 # pg_val = BeliefValue(c_gw, gw_up, gw_pol[1], gw_b0, 6)
 
-@show value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 5)
+@show value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 6)
 
 runs = 1000000
-simlist = [Sim(tiger,t_pol[1], t_up,t_b0,max_steps=6) for i in 1:runs]
+simlist = [Sim(tiger,t_pol[1], t_up,t_b0,max_steps=7) for i in 1:runs]
 result = run_parallel(simlist) do sim, hist
     return [:disc_rew=>discounted_reward(hist)]
 end
