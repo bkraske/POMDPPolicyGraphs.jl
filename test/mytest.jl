@@ -5,6 +5,7 @@ using POMDPModels, RockSample
 using ConstrainedPOMDPModels
 using ConstrainedPOMDPs
 using StaticArrays
+using Statistics
 
 rs = RockSamplePOMDP(5, 7)
 tiger = TigerPOMDP()
@@ -16,9 +17,9 @@ solver = PBVISolver(max_iter=40, verbose=true, witness_b=true)
 t_pol = solve(solver,tiger)
 t_up = DiscreteUpdater(tiger)
 t_b0 = initialize_belief(t_up,initialstate(tiger))
-# t_pt = POMDPPolicyGraphs.policy_tree(tiger, t_up, t_pol, t_b0, 5)
-# t_pg = policy2fsc(tiger, t_up, t_pol, t_b0, 5)
-# t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol, t_b0, 5)
+# t_pt = POMDPPolicyGraphs.policy_tree(tiger, t_up, t_pol[1], t_b0, 6)
+# t_pg = policy2fsc(tiger, t_up, t_pol, t_b0, 6)
+t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol[1], t_b0, 6)
 
 
 # tpgc = POMDPPolicyGraphs.CGCP_pg2(tiger, t_up, t_pol...)
@@ -68,5 +69,6 @@ simlist = [Sim(tiger,t_pol[1], t_up,t_b0,max_steps=7) for i in 1:runs]
 result = run_parallel(simlist) do sim, hist
     return [:disc_rew=>discounted_reward(hist)]
 end
-@show mean(result.disc_rew)
-@show std(result.disc_rew)/sqrt(runs)
+@show mu = mean(result.disc_rew)
+@show sem = std(result.disc_rew)/sqrt(runs)
+@show mu-3*sem < value[1] < mu+3*sem

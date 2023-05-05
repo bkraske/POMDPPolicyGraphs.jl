@@ -13,6 +13,7 @@ using SparseArrays
 include("generation.jl")
 include("evaluation.jl")
 include("visualization.jl")
+include("recursive_evaluation.jl")
 
 export
 GrzesPolicyGraph,
@@ -23,7 +24,9 @@ GenandEvalPG,
 BeliefValue,
 CGCP_pg2,
 recursive_evaluation,
-VecReward
+VecReward,
+EvalTabularPOMDP,
+sparse_recursive_evaluation
 
 
 

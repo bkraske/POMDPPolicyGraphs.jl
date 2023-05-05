@@ -126,7 +126,7 @@ function GenandEvalPG end
 function GenandEvalPG(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; 
             eval_tolerance::Float64=0.001, rewardfunction=VecReward())
-    @show rewardfunction
+    # @show rewardfunction
     pg = policy2fsc(m, updater, pol, b0, depth)
     values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     return values
@@ -155,10 +155,10 @@ end
 function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int;
             eval_tolerance::Float64=0.001, rewardfunction=VecReward())
-    @show rewardfunction
-    println("Generate PG")
+    # @show rewardfunction
+    # println("Generate PG")
     pg = policy2fsc(m, updater, pol, b0, depth)
-    println("Evaluate PG")
+    # println("Evaluate PG")
     values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     i = pg.node1
     first_node = values[i, :, :]
