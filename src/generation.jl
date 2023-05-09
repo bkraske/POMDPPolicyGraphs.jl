@@ -451,7 +451,7 @@ end
 
 function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
     d = 0
-    r_dim = length(rew_f(pomdp,states(pomdp)[1],actions(pomdp)[1],states(pomdp)[1]))
+    r_dim = length(rew_f(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1],ordered_states(pomdp)[1]))
     r = recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, b, depth, d)
     return r
 end

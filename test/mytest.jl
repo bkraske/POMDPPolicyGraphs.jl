@@ -7,7 +7,9 @@ using ConstrainedPOMDPs
 using StaticArrays
 using Statistics
 
-rs = RockSamplePOMDP(5, 7)
+using SARSOP
+
+rs = RockSamplePOMDP() #(5, 7)
 tiger = TigerPOMDP()
 cb = BabyPOMDP()
 tm = TMaze()
@@ -19,7 +21,7 @@ t_up = DiscreteUpdater(tiger)
 t_b0 = initialize_belief(t_up,initialstate(tiger))
 # t_pt = POMDPPolicyGraphs.policy_tree(tiger, t_up, t_pol[1], t_b0, 6)
 # t_pg = policy2fsc(tiger, t_up, t_pol, t_b0, 6)
-t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol[1], t_b0, 6)
+# t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol[1], t_b0, 6)
 
 
 # tpgc = POMDPPolicyGraphs.CGCP_pg2(tiger, t_up, t_pol...)
@@ -72,3 +74,21 @@ end
 @show mu = mean(result.disc_rew)
 @show sem = std(result.disc_rew)/sqrt(runs)
 @show mu-3*sem < value[1] < mu+3*sem
+
+
+#RS Testing
+rs_pol = solve(SARSOPSolver(),rs)
+rs_up = DiscreteUpdater(rs)
+rs_b0 = initialize_belief(rs_up,initialstate(rs))
+rs_value0 = BeliefValue(rs, rs_up, sar_pol, rs_b0, 30)
+# rs_value = recursive_evaluation(rs, rs_up, sar_pol, VecReward(), rs_b0, 6)
+
+
+runs2 = 1000000
+simlist2 = [Sim(rs,rs_pol, rs_up,rs_b0) for i in 1:runs]
+result2 = run_parallel(simlist2) do sim, hist
+    return [:disc_rew=>discounted_reward(hist)]
+end
+@show mu2 = mean(result2.disc_rew)
+@show sem2 = std(result2.disc_rew)/sqrt(runs2)
+@show mu2-3*sem2 < rs_value0[1] < mu2+3*sem2
