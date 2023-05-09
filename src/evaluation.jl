@@ -153,11 +153,11 @@ function BeliefValue(pg,result::Array, b::DiscreteBelief)
 end
 
 function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
-            b0::DiscreteBelief, depth::Int;
+            b0::DiscreteBelief, depth::Int; replace=[],
             eval_tolerance::Float64=0.001, rewardfunction=VecReward())
     # @show rewardfunction
     # println("Generate PG")
-    pg = policy2fsc(m, updater, pol, b0, depth)
+    pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
     # println("Evaluate PG")
     values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     i = pg.node1

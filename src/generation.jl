@@ -67,7 +67,7 @@ function is_nonzero_obs(pomdp::POMDP, a, b::SparseVector{Float64, Int64}, o)
 end
 
 ##Grzes Methods
-function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int) where {S,A}
+function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=[]) where {S,A}
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
     action_list = A[]
     node_list = Int[]
@@ -78,7 +78,11 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         num_nnz = 0
         num_outer += 1
         b, d, i = popfirst!(queue)
-        a = action(pol, b)
+        if j == 1 && !isempty(replace)
+            a = replace[1]
+        else
+            a = action(pol, b)
+        end
         # @show a
         push!(action_list, a)
         push!(node_list, i)
@@ -170,9 +174,9 @@ function tree2pg(tree::GrzesPolicyGraph)
     return PolicyGraph(tree.actions, tree.edges, tree.node1)
 end
 
-function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int)
+function policy2fsc(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace=[])
     # println("Build Tree")
-    pg = policy_tree(m, updater, pol, b0, depth)
+    pg = policy_tree(m, updater, pol, b0, depth; replace=replace)
     # @show length(pg.nodes)
     # println("Condense Tree")
     node_l = length(pg.nodes)
