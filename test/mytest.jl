@@ -7,7 +7,7 @@ using ConstrainedPOMDPs
 using StaticArrays
 using Statistics
 
-using SARSOP
+using NativeSARSOP
 
 rs = RockSamplePOMDP() #(5, 7)
 tiger = TigerPOMDP()
@@ -80,14 +80,45 @@ end
 rs_pol = solve(SARSOPSolver(),rs)
 rs_up = DiscreteUpdater(rs)
 rs_b0 = initialize_belief(rs_up,initialstate(rs))
-rs_value0 = BeliefValue(rs, rs_up, sar_pol, rs_b0, 30)
+rs_value0 = BeliefValue(rs, rs_up, rs_pol, rs_b0, 30)
 # rs_value = recursive_evaluation(rs, rs_up, sar_pol, VecReward(), rs_b0, 6)
+my_vals = [BeliefValue(rs, rs_up, rs_pol, rs_b0, 100;replace=[a])[1] for a in ordered_actions(rs)]
 
+#TEST PG ACCURACY HERE --> Compare to MC Sim and see if correct for diff first action
+runs2 = 100000
 
-runs2 = 1000000
-simlist2 = [Sim(rs,rs_pol, rs_up,rs_b0) for i in 1:runs]
+function my_sim(pomdp,up,pol;replace=[],max_steps=typemax(Int))
+    r_ave = []
+    r_ave_u = []
+    for _ in 1:runs2
+        r_tot = 0
+        r_tot_u = 0
+        b = initialize_belief(up,initialstate(pomdp))
+        s = rand(initialstate(pomdp))
+        steps = 0
+        d = 1.0
+        while !isterminal(pomdp,s) && steps <= max_steps
+            steps += 1
+            if steps==1 && !isempty(replace)
+                a = first(replace)
+            else
+                a = action(pol,b)
+            end
+            s,o,r = @gen(:sp,:o,:r)(pomdp,s,a)
+            b = update(up,b,a,o)
+            r_tot += d*r
+            d*= discount(pomdp)
+            r_tot_u += r
+        end
+        push!(r_ave,r_tot)
+        push!(r_ave_u,r_tot)
+    end
+    return mean(r_ave), std(r_ave)/sqrt(runs2)
+end
+
+simlist2 = [Sim(rs,rs_pol, rs_up,rs_b0) for i in 1:runs2]
 result2 = run_parallel(simlist2) do sim, hist
-    return [:disc_rew=>discounted_reward(hist)]
+    return [:disc_rew=>undiscounted_reward(hist)]
 end
 @show mu2 = mean(result2.disc_rew)
 @show sem2 = std(result2.disc_rew)/sqrt(runs2)

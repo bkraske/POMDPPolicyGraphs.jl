@@ -80,10 +80,10 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         b, d, i = popfirst!(queue)
         if j == 1 && !isempty(replace)
             a = replace[1]
+            # @show a
         else
             a = action(pol, b)
         end
-        # @show a
         push!(action_list, a)
         push!(node_list, i)
         if d < depth
