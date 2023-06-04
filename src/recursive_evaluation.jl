@@ -146,7 +146,7 @@ function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Flo
             best_action = pol.action_map[i]
             best_val = val
         end
-    end
+    end 
     return actionindex(pomdp,best_action)
 end
 
