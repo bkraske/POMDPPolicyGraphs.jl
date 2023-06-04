@@ -78,12 +78,12 @@ function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteB
         num_nnz = 0
         num_outer += 1
         b, d, i = popfirst!(queue)
-        if j == 1 && !isempty(replace)
-            a = replace[1]
+        a=if j == 1 && !isempty(replace)
+            replace[1]
             # @show a
         else
-            a = action(pol, b)
-        end
+            action(pol, b)
+        end::A
         push!(action_list, a)
         push!(node_list, i)
         if d < depth
@@ -453,14 +453,14 @@ function policy_tree_pg(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::Discre
     return PolicyGraph(action_list, edge_list, 1)
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+function recursive_evaluation(pomdp::POMDP, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int)#TYLER
     d = 0
     r_dim = length(rew_f(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1],ordered_states(pomdp)[1]))
     r = recursive_evaluation(pomdp, updater, pol, rew_f, r_dim, b, depth, d)
     return r
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::DiscreteBelief, depth::Int, d::Int) where {S,A}
+function recursive_evaluation(pomdp::POMDP, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::DiscreteBelief, depth::Int, d::Int)
     a = action(pol, b)
     value = zeros(r_dim)
     d<=depth && for (s,w1) in weighted_iterator(b)
