@@ -7,12 +7,10 @@ module POMDPPolicyGraphs
 using POMDPs
 using POMDPTools
 using LinearAlgebra
-using GraphRecipes
 using SparseArrays
 
 include("generation.jl")
 include("evaluation.jl")
-include("visualization.jl")
 include("recursive_evaluation.jl")
 
 export
@@ -20,14 +18,11 @@ GrzesPolicyGraph,
 policy_tree,
 equivalent_cp,
 policy2fsc,
-GenandEvalPG,
-BeliefValue,
-CGCP_pg2,
-recursive_evaluation,
+gen_eval_pg,
+gen_belief_value,
 VecReward,
 EvalTabularPOMDP,
-sparse_recursive_evaluation
-
+recursive_evaluation
 
 
 end # module

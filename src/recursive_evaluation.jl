@@ -150,15 +150,26 @@ function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Flo
     return actionindex(pomdp,best_action)
 end
 
-function sparse_recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+#New Code
+
+"""
+    recursive_evaluation(pomdp::POMDP, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int)
+
+Calculates the value of a policy recursively to a specified depth, calculating reward according to 'rew_f', the reward function passed.
+
+"""
+function recursive_evaluation end
+
+
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
     d = 1
     s_pomdp = EvalTabularPOMDP(pomdp)
     r_dim = length(rew_f(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1],ordered_states(pomdp)[1]))
-    r = sparse_recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, sparse(b.b), depth, d)
+    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, sparse(b.b), depth, d)
     return r
 end
 
-function sparse_recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
+function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
     a = action_from_vec(pomdp,pol, b)
     value = belief_reward(s_pomdp,b,a)
     if d<depth
@@ -169,7 +180,7 @@ function sparse_recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMD
             po = sum(bp)
             if po > 0.
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*sparse_recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
+                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
             end    
         end
     end

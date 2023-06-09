@@ -15,10 +15,10 @@ cb = BabyPOMDP()
 tm = TMaze()
 mh = MiniHallway()
 
-solver = PBVISolver(max_iter=40, verbose=true, witness_b=true) 
-t_pol = solve(solver,tiger)
-t_up = DiscreteUpdater(tiger)
-t_b0 = initialize_belief(t_up,initialstate(tiger))
+# solver = PBVISolver(max_iter=40, verbose=true, witness_b=true) 
+# t_pol = solve(solver,tiger)
+# t_up = DiscreteUpdater(tiger)
+# t_b0 = initialize_belief(t_up,initialstate(tiger))
 # t_pt = POMDPPolicyGraphs.policy_tree(tiger, t_up, t_pol[1], t_b0, 6)
 # t_pg = policy2fsc(tiger, t_up, t_pol, t_b0, 6)
 # t_pg_e = POMDPPolicyGraphs.GenandEvalPG(tiger, t_up, t_pol[1], t_b0, 6)
@@ -64,7 +64,7 @@ t_b0 = initialize_belief(t_up,initialstate(tiger))
 
 # pg_val = BeliefValue(c_gw, gw_up, gw_pol[1], gw_b0, 6)
 
-@show value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 6)
+@show value = recursive_evaluation(tiger, t_up, t_pol[1], VecReward(), t_b0, 50)
 
 runs = 1000000
 simlist = [Sim(tiger,t_pol[1], t_up,t_b0,max_steps=7) for i in 1:runs]
@@ -80,9 +80,10 @@ end
 rs_pol = solve(SARSOPSolver(),rs)
 rs_up = DiscreteUpdater(rs)
 rs_b0 = initialize_belief(rs_up,initialstate(rs))
-rs_value0 = BeliefValue(rs, rs_up, rs_pol, rs_b0, 30)
+rs_value0 = gen_belief_value(rs, rs_up, rs_pol, rs_b0, 50)
+rec_value0 = recursive_evaluation(rs, rs_up, rs_pol, VecReward(), rs_b0, 50)
 # rs_value = recursive_evaluation(rs, rs_up, sar_pol, VecReward(), rs_b0, 6)
-my_vals = [BeliefValue(rs, rs_up, rs_pol, rs_b0, 100;replace=[a])[1] for a in ordered_actions(rs)]
+my_vals = [gen_belief_value(rs, rs_up, rs_pol, rs_b0, 100;replace=[a])[1] for a in ordered_actions(rs)]
 
 #TEST PG ACCURACY HERE --> Compare to MC Sim and see if correct for diff first action
 runs2 = 100000
@@ -116,9 +117,9 @@ function my_sim(pomdp,up,pol;replace=[],max_steps=typemax(Int))
     return mean(r_ave), std(r_ave)/sqrt(runs2)
 end
 
-simlist2 = [Sim(rs,rs_pol, rs_up,rs_b0) for i in 1:runs2]
+simlist2 = [Sim(rs,rs_pol,rs_up,rs_b0) for i in 1:runs2]
 result2 = run_parallel(simlist2) do sim, hist
-    return [:disc_rew=>undiscounted_reward(hist)]
+    return [:disc_rew=>discounted_reward(hist)]
 end
 @show mu2 = mean(result2.disc_rew)
 @show sem2 = std(result2.disc_rew)/sqrt(runs2)

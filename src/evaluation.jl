@@ -40,7 +40,7 @@ end
 
 
 """
-    EvalPolicyGraph(m::POMDP,pg::PolicyGraph;tolerance::Float64=0.001,rewardfunction = POMDPs.reward)
+    eval_pg(m::POMDP,pg::PolicyGraph;tolerance::Float64=0.001,rewardfunction = POMDPs.reward)
 
     Evaluates a PolicyGraph using iteration.
     Returns a value matrix (with each column corresponding to a state and each row corresponding to a graph node)
@@ -49,9 +49,9 @@ end
     This function must return a vector (splat any cost vectors).
     Modified from: https://jair.org/index.php/jair/article/view/11216
 """
-function EvalPolicyGraph end
+function eval_pg end
 
-function EvalPolicyGraph(
+function eval_pg(
     m::POMDP{S,A},
     pg::PolicyGraph;
     tolerance::Float64=0.001,
@@ -113,7 +113,7 @@ end
 
 ##Convenience Functions
 """
-    GenandEvalPG(updater::Updater,pol::AlphaVectorPolicy,b0::DiscreteBelief;tolerance::Int64=0.001,rewardfunction=POMDPs.reward)
+    gen_eval_pg(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int, eval_tolerance::Float64=0.001, rewardfunction=VecReward())
 
     Generates and evaluates (using iteration) an alpha-vector-based policy graph.
     Returns a value matrix (with each column corresponding to a state and each row corresponding to a graph node) and policy graph
@@ -122,26 +122,26 @@ end
     This function must return a vector (splat any cost vectors).
 """
 
-function GenandEvalPG end
-function GenandEvalPG(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
+function gen_eval_pg end
+function gen_eval_pg(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; 
             eval_tolerance::Float64=0.001, rewardfunction=VecReward())
     # @show rewardfunction
     pg = policy2fsc(m, updater, pol, b0, depth)
-    values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     return values
 end
 
-##Get value from belief and state values
+
 """
-    BeliefValue(result::Array,b::DiscreteBelief)
+    get_belief_value(pg,result::Array, b::DiscreteBelief)
 
     Takes the state and node matrix from an evaluated policy graph and a Discrete Belief.
     Returns value of initial belief using the state values of the first node in the graph.
 """
-function BeliefValue end
+function get_belief_value end
 
-function BeliefValue(pg,result::Array, b::DiscreteBelief)
+function get_belief_value(pg,result::Array, b::DiscreteBelief)
     i = pg.node1
     first_node = result[i, :, :]
     if length(support(b)) == size(first_node)[1]
@@ -151,15 +151,22 @@ function BeliefValue(pg,result::Array, b::DiscreteBelief)
               sizes: $(length(support(b))), $(size(first_node)[1])")
     end
 end
+##Get value from belief and state values
+"""
+    gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int; replace=[], eval_tolerance::Float64=0.001, rewardfunction=VecReward())
 
-function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
+    Returns value of initial belief using the state values of the first node in the graph.
+"""
+function gen_belief_value end
+
+function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; replace=[],
             eval_tolerance::Float64=0.001, rewardfunction=VecReward())
     # @show rewardfunction
     # println("Generate PG")
     pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
     # println("Evaluate PG")
-    values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     i = pg.node1
     first_node = values[i, :, :]
     if length(support(b0)) == size(first_node)[1]
@@ -167,23 +174,5 @@ function BeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
     else
         throw("Belief and result columns are different
               sizes: $(length(support(b))), $(size(first_node)[1])")
-    end
-end
-
-function TreeBeliefValue(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
-    b0::DiscreteBelief, depth::Int;
-    eval_tolerance::Float64=0.001, rewardfunction=VecReward())
-    @show rewardfunction
-    println("Generate PG")
-    pg = policy_tree_pg(m, updater, pol, b0, depth)
-    println("Evaluate PG")
-    values = EvalPolicyGraph(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
-    i = pg.node1
-    first_node = values[i, :, :]
-    if length(support(b0)) == size(first_node)[1]
-        return b0.b' * first_node
-    else
-        throw("Belief and result columns are different
-        sizes: $(length(support(b))), $(size(first_node)[1])")
     end
 end
