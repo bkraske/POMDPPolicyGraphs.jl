@@ -161,15 +161,15 @@ Calculates the value of a policy recursively to a specified depth, calculating r
 function recursive_evaluation end
 
 
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward()) where {S,A} #TYLER
     d = 1
-    s_pomdp = EvalTabularPOMDP(pomdp)
-    r_dim = length(rew_f(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1],ordered_states(pomdp)[1]))
-    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, sparse(b.b), depth, d)
+    r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
+    s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
+    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
     return r
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, rew_f, r_dim::Int64, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
+function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
     a = action_from_vec(pomdp,pol, b)
     value = belief_reward(s_pomdp,b,a)
     if d<depth
@@ -180,7 +180,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, upda
             po = sum(bp)
             if po > 0.
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, rew_f, r_dim, bp, depth, d+1)
+                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d+1)
             end    
         end
     end

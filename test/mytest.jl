@@ -75,6 +75,9 @@ end
 @show sem = std(result.disc_rew)/sqrt(runs)
 @show mu-3*sem < value[1] < mu+3*sem
 
+function testr(m,s,a)
+    return [reward(m,s,a) 0]
+end
 
 #RS Testing
 rs_pol = solve(SARSOPSolver(),rs)
@@ -82,6 +85,7 @@ rs_up = DiscreteUpdater(rs)
 rs_b0 = initialize_belief(rs_up,initialstate(rs))
 rs_value0 = gen_belief_value(rs, rs_up, rs_pol, rs_b0, 50)
 rec_value0 = recursive_evaluation(rs, rs_up, rs_pol, VecReward(), rs_b0, 50)
+recursive_evaluation(rs, rs_up, rs_pol, rs_b0, 50; rewardfunction=testr)
 # rs_value = recursive_evaluation(rs, rs_up, sar_pol, VecReward(), rs_b0, 6)
 my_vals = [gen_belief_value(rs, rs_up, rs_pol, rs_b0, 100;replace=[a])[1] for a in ordered_actions(rs)]
 
