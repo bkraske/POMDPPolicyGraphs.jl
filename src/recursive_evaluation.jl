@@ -143,18 +143,18 @@ function corrector(pomdp::EvalTabularPOMDP, pred::AbstractVector, a, o::Int)
     return _sparse_col_mul(pred, pomdp.O[a], o)
 end
 
-function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
-    best_val = -Inf
-    best_action = pol.action_map[1]
-    for (i,α) in enumerate(pol.alphas)
-        val = dot(b,α)
-        if val > best_val
-            best_action = pol.action_map[i]
-            best_val = val
-        end
-    end
-    return actionindex(pomdp,best_action)
-end
+# function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
+#     best_val = -Inf
+#     best_action = pol.action_map[1]
+#     for (i,α) in enumerate(pol.alphas)
+#         val = dot(b,α)
+#         if val > best_val
+#             best_action = pol.action_map[i]
+#             best_val = val
+#         end
+#     end
+#     return actionindex(pomdp,best_action)
+# end
 
 #New Code
 
@@ -167,16 +167,20 @@ Calculates the value of a policy recursively to a specified depth, calculating r
 function recursive_evaluation end
 
 
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward()) where {S,A} #TYLER
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=[]) where {S,A} #TYLER
     d = 1
     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
     s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
-    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
+    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
     return r
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
-    a = action_from_vec(pomdp,pol, b)
+function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector) where {S,A}
+    a=if d==1 && !isempty(replace)
+        replace[1]
+    else
+        action_from_vec(pomdp,pol, b)
+    end
     value = belief_reward(s_pomdp,b,a)
     if d<depth
         obs = s_pomdp.O[a]
@@ -186,7 +190,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, upda
             po = sum(bp)
             if po > 0.
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d+1)
+                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d+1, replace)
             end    
         end
     end
