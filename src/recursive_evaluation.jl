@@ -42,8 +42,14 @@ end
 function _tabular_rewards(pomdp, S, A, rew_f, r_len)
     R = Array{Float64}(undef, length(S), length(A), r_len)
     for (s_idx, s) ∈ enumerate(S)
-        for (a_idx, a) ∈ enumerate(A)
-            R[s_idx, a_idx,:] = rew_f(pomdp, s, a)
+        if !isterminal(pomdp,s)
+            for (a_idx, a) ∈ enumerate(A)
+                R[s_idx, a_idx,:] = rew_f(pomdp, s, a)
+            end
+        else
+            for (a_idx, a) ∈ enumerate(A)
+                R[s_idx, a_idx,:] = zeros(r_len)
+            end
         end
     end
     R

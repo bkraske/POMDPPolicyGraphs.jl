@@ -67,6 +67,39 @@ function is_nonzero_obs(pomdp::POMDP, a, b::SparseVector{Float64, Int64}, o)
 end
 
 ##Grzes Methods
+function recursive_tree(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int, action_list, edge_list, d, j_old, a_old)
+    if d < depth
+        d += 1
+        for o in observations(m)
+            if is_nonzero_obs(m, a_old, b0, o)
+                bp = update(updater, b0, a_old, o)
+                a = action(pol, bp)
+                push!(action_list, a)
+                j = copy(length(action_list))
+                push!(edge_list, (j_old, o) => j)
+                recursive_tree(m,updater,pol,bp,depth,action_list,edge_list,d,j,a)
+            end
+        end
+    end
+end
+
+function recursive_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=[]) where {S,A}
+    edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
+    action_list = A[]
+    d = 0
+    a=if !isempty(replace)
+        replace[1]
+    else
+        action(pol, b0)
+    end::A
+    push!(action_list, a)
+    j = copy(length(action_list))
+
+    recursive_tree(m::POMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int, action_list, edge_list, d, j, a)
+
+    return PolicyGraph(action_list, edge_list, 1)
+end
+
 function policy_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=[]) where {S,A}
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
     action_list = A[]

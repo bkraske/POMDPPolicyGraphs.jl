@@ -1,17 +1,17 @@
 # using POMDPPolicyGraphs
-using POMDPs, POMDPTools, SARSOP
+using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
-using .POMDPPolicyGraphs
+# using .POMDPPolicyGraphs
 
-rs = RockSamplePOMDP(5, 7)
+rs = RockSamplePOMDP(5,7)
 tiger = TigerPOMDP()
 cb = BabyPOMDP()
 tm = TMaze()
 mh = MiniHallway()
 
-function get_policy(m::POMDP; solver=SARSOPSolver(timeout=60, verbose=false))
+function get_policy(m::POMDP; solver=SARSOPSolver())
     #Solve Problem
     pol = solve(solver, m)
     up = DiscreteUpdater(m)
@@ -20,34 +20,56 @@ function get_policy(m::POMDP; solver=SARSOPSolver(timeout=60, verbose=false))
 end
 
 function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val;
-    runs=1000)
+    runs=5000,h=15)
+    @info m
     #Do MC Sims
-    simlist = [Sim(m, pol, up, bel0; max_steps=1000) for i in 1:runs]
+    simlist = [Sim(m, pol, up, bel0; max_steps=h) for _ in 1:runs]
     mc_res_raw = run(simlist) do sim, hist
         return [:disc_rew => discounted_reward(hist)]
     end
     mc_res = mean(mc_res_raw[!, :disc_rew])
     mc_res_sem = 3 * std(mc_res_raw[!, :disc_rew]) / sqrt(runs)
 
-    bel_val = BeliefValue(pg_val, bel0)
+    bel_val = pg_val[1]
     #Compare and Report
     @show mc_res
-    @show typeof(bel_val)
-    @info "Difference is $(mc_res-bel_val[1]), 3 SEM is $mc_res_sem"
-    @info "Passing: $((mc_res-bel_val[1])<mc_res_sem)"
-    return (mc_res - bel_val[1]) < mc_res_sem
+    @show bel_val[1]
+    is_pass = (abs(mc_res-bel_val)<mc_res_sem)
+    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Passing: $is_pass"
+    return is_pass
 end
 
-function pg_vs_mc(m::POMDP; solver=SARSOPSolver(; timeout=60, verbose=false))
+function pg_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = GenandEvalPG(m_tuple...,25)
-    return compare_pg_rollout(m_tuple..., pg_res)
+    pg_res = gen_belief_value(m_tuple..., h)
+    return compare_pg_rollout(m_tuple..., pg_res;h=h)
 end
 
-@test pg_vs_mc(rs) #Intermittant Failure
-@test pg_vs_mc(tiger)
-@test pg_vs_mc(cb)
-@test pg_vs_mc(mh)
-@test pg_vs_mc(tm) #Consistently fails
+function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
+    m_tuple = get_policy(m::POMDP; solver=solver)
+    pg_res = recursive_evaluation(m_tuple..., h)
+    return compare_pg_rollout(m_tuple..., pg_res;h=h)
+end
 
+@testset "Policy Graph" begin
+    testh = 17
+    @test pg_vs_mc(rs;h=testh) #Intermittant Failure
+    @test pg_vs_mc(tiger;h=testh)
+    @test pg_vs_mc(cb;h=testh)
+    @test pg_vs_mc(mh;h=testh)
+    @test pg_vs_mc(tm;h=testh) #Consistently fails
+end
 
+@testset "Recursive Evaluation" begin
+    testh = 17
+    @test recur_vs_mc(rs;h=testh)
+    @test recur_vs_mc(tiger;h=testh)
+    @test recur_vs_mc(cb;h=testh)
+    @test recur_vs_mc(mh;h=testh)
+    @test recur_vs_mc(tm;h=testh)
+end
+
+rs_tuple = get_policy(rs)
+t1 = POMDPPolicyGraphs.gpg2pg(policy_tree(rs_tuple..., 15))
+t2 = POMDPPolicyGraphs.recursive_tree(rs_tuple..., 15)
