@@ -62,7 +62,7 @@ end
 end
 
 @testset "Recursive Evaluation" begin
-    testh = 17
+    testh = 25
     @test recur_vs_mc(rs;h=testh)
     @test recur_vs_mc(tiger;h=testh)
     @test recur_vs_mc(cb;h=testh)

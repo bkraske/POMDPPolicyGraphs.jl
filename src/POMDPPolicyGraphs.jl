@@ -9,9 +9,9 @@ using POMDPTools
 using LinearAlgebra
 using SparseArrays
 
+include("recursive_evaluation.jl")
 include("generation.jl")
 include("evaluation.jl")
-include("recursive_evaluation.jl")
 
 export
 GrzesPolicyGraph,

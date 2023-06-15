@@ -67,18 +67,6 @@ function is_nonzero_obs(pomdp::POMDP, a, b::SparseVector{Float64, Int64}, o)
 end
 
 ##Grzes Methods
-function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
-    best_val = -Inf
-    best_action = pol.action_map[1]
-    for (i,α) in enumerate(pol.alphas)
-        val = dot(b,α)
-        if val > best_val
-            best_action = pol.action_map[i]
-            best_val = val
-        end
-    end
-    return actionindex(pomdp,best_action)
-end
 
 function sparse_recursive_tree(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old)
     if d < depth

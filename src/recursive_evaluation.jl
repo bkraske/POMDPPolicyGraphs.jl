@@ -143,18 +143,18 @@ function corrector(pomdp::EvalTabularPOMDP, pred::AbstractVector, a, o::Int)
     return _sparse_col_mul(pred, pomdp.O[a], o)
 end
 
-# function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
-#     best_val = -Inf
-#     best_action = pol.action_map[1]
-#     for (i,α) in enumerate(pol.alphas)
-#         val = dot(b,α)
-#         if val > best_val
-#             best_action = pol.action_map[i]
-#             best_val = val
-#         end
-#     end
-#     return actionindex(pomdp,best_action)
-# end
+function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
+    best_val = -Inf
+    best_action = pol.action_map[1]
+    for (i,α) in enumerate(pol.alphas)
+        val = dot(b,α)
+        if val > best_val
+            best_action = pol.action_map[i]
+            best_val = val
+        end
+    end
+    return actionindex(pomdp,best_action)
+end
 
 #New Code
 
