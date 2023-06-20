@@ -62,21 +62,10 @@ end
 end
 
 @testset "Recursive Evaluation" begin
-    testh = 7
+    testh = 20
     @test recur_vs_mc(rs;h=testh)
     @test recur_vs_mc(tiger;h=testh)
     @test recur_vs_mc(cb;h=testh)
     @test recur_vs_mc(mh;h=testh)
     @test recur_vs_mc(tm;h=testh)
 end
-
-rs_tuple = get_policy(rs)
-rst1 = POMDPPolicyGraphs.gpg2pg(policy_tree(rs_tuple..., 15))
-rst2 = POMDPPolicyGraphs.recursive_tree(rs_tuple..., 15)
-rst3 = POMDPPolicyGraphs.sparse_recursive_tree(rs_tuple..., 15)
-
-t_tuple = get_policy(tiger)
-tt1 = POMDPPolicyGraphs.gpg2pg(policy_tree(t_tuple..., 15))
-tt2 = POMDPPolicyGraphs.recursive_tree(t_tuple..., 15)
-tt3 = POMDPPolicyGraphs.sparse_recursive_tree(t_tuple..., 15)
-tt4 = policy2fsc(t_tuple..., 15)
