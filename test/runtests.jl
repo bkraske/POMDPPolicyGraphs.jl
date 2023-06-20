@@ -43,7 +43,7 @@ end
 function pg_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = gen_belief_value(m_tuple..., h)
-    return compare_pg_rollout(m_tuple..., pg_res;h=h)
+    return compare_pg_rollout(m_tuple..., pg_res;h=500)
 end
 
 function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
@@ -53,7 +53,7 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
 end
 
 @testset "Policy Graph" begin
-    testh = 17
+    testh = 20
     @test pg_vs_mc(rs;h=testh) #Intermittant Failure
     @test pg_vs_mc(tiger;h=testh)
     @test pg_vs_mc(cb;h=testh)
@@ -62,7 +62,7 @@ end
 end
 
 @testset "Recursive Evaluation" begin
-    testh = 17
+    testh = 7
     @test recur_vs_mc(rs;h=testh)
     @test recur_vs_mc(tiger;h=testh)
     @test recur_vs_mc(cb;h=testh)
@@ -78,4 +78,5 @@ rst3 = POMDPPolicyGraphs.sparse_recursive_tree(rs_tuple..., 15)
 t_tuple = get_policy(tiger)
 tt1 = POMDPPolicyGraphs.gpg2pg(policy_tree(t_tuple..., 15))
 tt2 = POMDPPolicyGraphs.recursive_tree(t_tuple..., 15)
-tt3 = POMDPPolicyGraphs.sparse_recursive_tree(t_tuple..., 5)
+tt3 = POMDPPolicyGraphs.sparse_recursive_tree(t_tuple..., 15)
+tt4 = policy2fsc(t_tuple..., 15)

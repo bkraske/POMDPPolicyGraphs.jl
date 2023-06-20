@@ -161,10 +161,14 @@ function gen_belief_value end
 
 function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; replace=[],
-            eval_tolerance::Float64=0.001, rewardfunction=VecReward())
+            eval_tolerance::Float64=0.001, rewardfunction=VecReward(), sparse=true)
     # @show rewardfunction
     # println("Generate PG")
-    pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
+    if sparse == false
+        pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
+    else
+        pg = sparse_recursive_tree(m, updater, pol, b0, depth;replace=replace)
+    end
     # println("Evaluate PG")
     values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     i = pg.node1

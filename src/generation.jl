@@ -70,27 +70,28 @@ end
 
 function sparse_recursive_tree(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old)
     if d < depth
-        d += 1
+        d+=1
         obs = s_pomdp.O[a_old]
         pred = s_pomdp.T[a_old]*b0
         for o in axes(obs,2)
             bp = corrector(s_pomdp, pred, a_old, o)
             po = sum(bp)
-            @show po > 0.
+            # @show po > 0.
             if po > 0.
                 bp.nzval ./= po
-                @show Vector(bp) ∈ Vector.(b_list)
+                # @show Vector(bp) ∈ Vector.(b_list)
                 # @show Vector.(b_list)
-                @show bp
+                # @show bp
+                # @show b_list
                 if bp ∈ b_list
-                    push!(edge_list, (j_old, observations(m)[o]) => findall(x->x==bp, b_list)[1])
+                    push!(edge_list, (j_old, ordered_observations(m)[o]) => findall(x->x==bp, b_list)[1])
                 else
                     a = action_from_vec(m, pol, bp)
-                    push!(action_list, actions(m)[a])
+                    push!(action_list, ordered_actions(m)[a])
                     push!(b_list,bp)
-                    @show Vector.(b_list)
+                    # @show Vector.(b_list)
                     j = copy(length(action_list))
-                    push!(edge_list, (j_old, observations(m)[o]) => j)
+                    push!(edge_list, (j_old, ordered_observations(m)[o]) => j)
 
                     sparse_recursive_tree(m,s_pomdp,updater,pol,bp,depth,action_list,edge_list,b_list,d,j,a)
                 end
@@ -104,7 +105,7 @@ function sparse_recursive_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0:
     action_list = A[]
     b_list = SparseVector{Float64, Int64}[]
     s_pomdp = EvalTabularPOMDP(m)
-    d = 0
+    d = 1
     a=if !isempty(replace)
         replace[1]
     else
@@ -116,7 +117,7 @@ function sparse_recursive_tree(m::POMDP{S,A}, updater::Updater, pol::Policy, b0:
 
     sparse_recursive_tree(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a))
 
-    return b_list,PolicyGraph(action_list, edge_list, 1)
+    return PolicyGraph(action_list, edge_list, 1)
 end
 
 

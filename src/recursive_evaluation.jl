@@ -183,6 +183,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, upda
     end
     value = belief_reward(s_pomdp,b,a)
     if d<depth
+        d+=1
         obs = s_pomdp.O[a]
         pred = s_pomdp.T[a]*b
         for o in axes(obs,2)
@@ -190,7 +191,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, upda
             po = sum(bp)
             if po > 0.
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d+1, replace)
+                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d, replace)
             end    
         end
     end
