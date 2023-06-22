@@ -1,8 +1,9 @@
-#Take Tabular from ConstrainedSARSOP
-struct EvalTabularPOMDP <: POMDP{Int,Int,Int} #From ConstrainedSARSOP
-    T::Vector{SparseMatrixCSC{Float64, Int64}}
+#Take Tabular from NativeSARSOP
+struct EvalTabularPOMDP <: POMDP{Int,Int,Int} #From NativeSARSOP
+    T::Vector{SparseMatrixCSC{Float64, Int64}} #T[a][sp,s]
     R::Array{Float64,3} # R[s,a]
     O::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][sp, o]
+    O2::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][o, sp]
     isterminal::BitVector
     initialstate::SparseVector{Float64, Int}
     discount::Float64
@@ -13,93 +14,47 @@ function  EvalTabularPOMDP(pomdp::POMDP;rew_f=VecReward(),r_len=1)
     A = ordered_actions(pomdp)
     O = ordered_observations(pomdp)
 
-    T = _tabular_transitions(pomdp, S, A)
-    R = _tabular_rewards(pomdp, S, A, rew_f, r_len)
-    O = _tabular_observations(pomdp, S, A, O)
-    term = _vectorized_terminal(pomdp, S)
-    b0 = _vectorized_initialstate(pomdp, S)
-    return EvalTabularPOMDP(T,R,O,term,b0,discount(pomdp))
+    terminal = NativeSARSOP._vectorized_terminal(pomdp, S)
+    T = NativeSARSOP._tabular_transitions(pomdp, S, A, terminal)
+    R = eval_tabular_rewards(pomdp, S, A, terminal, rew_f, r_len)
+    O1 = NativeSARSOP._tabular_observations(pomdp, S, A, O)
+    O2 = osp_tabular_observations(pomdp, S, A, O)
+    b0 = NativeSARSOP._vectorized_initialstate(pomdp, S)
+    return EvalTabularPOMDP(T,R,O1,O2,terminal,b0,discount(pomdp))
 end
 
-function _tabular_transitions(pomdp, S, A)
-    T = [Matrix{Float64}(undef, length(S), length(S)) for _ ∈ eachindex(A)]
-    for i ∈ eachindex(T)
-        _fill_transitions!(pomdp, T[i], S, A[i])
-    end
-    T
-end
-
-function _fill_transitions!(pomdp, T, S, a)
+function eval_tabular_rewards(pomdp, S, A, terminal, rew_f, r_len)
+    R =  Array{Float64}(undef, length(S), length(A), r_len)
     for (s_idx, s) ∈ enumerate(S)
-        Tsa = transition(pomdp, s, a)
-        for (sp_idx, sp) ∈ enumerate(S)
-            T[sp_idx, s_idx] = pdf(Tsa, sp)
+        if terminal[s_idx]
+            R[s_idx, :, :] .= 0.0
+            continue
         end
-    end
-    T
-end
-
-function _tabular_rewards(pomdp, S, A, rew_f, r_len)
-    R = Array{Float64}(undef, length(S), length(A), r_len)
-    for (s_idx, s) ∈ enumerate(S)
-        if !isterminal(pomdp,s)
-            for (a_idx, a) ∈ enumerate(A)
-                R[s_idx, a_idx,:] = rew_f(pomdp, s, a)
-            end
-        else
-            for (a_idx, a) ∈ enumerate(A)
-                R[s_idx, a_idx,:] = zeros(r_len)
-            end
+        for (a_idx, a) ∈ enumerate(A)
+            R[s_idx, a_idx, :] = rew_f(pomdp, s, a)
         end
     end
     R
 end
 
-function _tabular_observations(pomdp, S, A, O)
-    _O = [Matrix{Float64}(undef, length(S), length(O)) for _ ∈ eachindex(A)]
+function osp_tabular_observations(pomdp, S, A, O)
+    _O = [Matrix{Float64}(undef, length(O), length(S)) for _ ∈ eachindex(A)]
     for i ∈ eachindex(_O)
-        _fill_observations!(pomdp, _O[i], S, A[i], O)
+        osp_fill_observations!(pomdp, _O[i], S, A[i], O)
     end
     _O
 end
 
-function _fill_observations!(pomdp, Oa, S, a, O)
+function osp_fill_observations!(pomdp, Oa, S, a, O)
     for (sp_idx, sp) ∈ enumerate(S)
         obs_dist = observation(pomdp, a, sp)
         for (o_idx, o) ∈ enumerate(O)
-            Oa[sp_idx, o_idx] = pdf(obs_dist, o)
+            Oa[o_idx, sp_idx] = pdf(obs_dist, o)
         end
     end
     Oa
 end
 
-function _tabular_costs(pomdp, S, A)
-    n_c = ConstrainedPOMDPs.constraint_size(pomdp)
-    C = Array{Float64, 3}(undef, length(S), length(A), n_c)
-    for (s_idx,s) ∈ enumerate(S)
-        for (a_idx,a) ∈ enumerate(A)
-            C[s_idx, a_idx, :] .= cost(pomdp, s, a)
-        end
-    end
-    C
-end
-
-function _vectorized_terminal(pomdp, S)
-    term = BitVector(undef, length(S))
-    @inbounds for i ∈ eachindex(term,S)
-        term[i] = isterminal(pomdp, S[i])
-    end
-    return term
-end
-
-function _vectorized_initialstate(pomdp, S)
-    b0 = initialstate(pomdp)
-    b0_vec = Vector{Float64}(undef, length(S))
-    @inbounds for i ∈ eachindex(S, b0_vec)
-        b0_vec[i] = pdf(b0, S[i])
-    end
-    return sparse(b0_vec)
-end
 
 POMDPTools.ordered_states(pomdp::EvalTabularPOMDP) = axes(pomdp.R, 1)
 POMDPs.states(pomdp::EvalTabularPOMDP) = ordered_states(pomdp)
@@ -110,37 +65,11 @@ POMDPs.observations(pomdp::EvalTabularPOMDP) = ordered_observations(pomdp)
 
 POMDPs.discount(pomdp::EvalTabularPOMDP) = pomdp.discount
 
-belief_reward(s_pomdp, b, a) = [dot(@view(s_pomdp.R[:,a,i]), b) for i in axes(s_pomdp.R,3)]
-
-
-#FROM NativeSARSOP
-function _sparse_col_mul(x::SparseVector{T}, A::SparseMatrixCSC{T}, col::Int) where T
-    n = length(x)
-    xnzind = SparseArrays.nonzeroinds(x)
-    xnzval = SparseArrays.nonzeros(x)
-
-    Anzr = nzrange(A, col)
-    Anzval = @view nonzeros(A)[Anzr]
-    Anzind = @view rowvals(A)[Anzr]
-
-    mx = length(xnzind)
-    mA = length(Anzr)
-
-    cap = min(mx,mA)
-    rind = zeros(Int, cap)
-    rval = zeros(T, cap)
-    ir = 0
-    ix = 1
-    iy = 1
-
-    ir = SparseArrays._binarymap_mode_0!(*, mx, mA, xnzind, xnzval, Anzind, Anzval, rind, rval)
-    resize!(rind, ir)
-    resize!(rval, ir)
-    return SparseVector(n, rind, rval)
-end
+#Modified from NativeSARSOP
+belief_reward(s_pomdp::EvalTabularPOMDP, b::SparseVector{Float64, Int64}, a::Int) = [dot(@view(s_pomdp.R[:,a,i]), b) for i in axes(s_pomdp.R,3)]
 
 function corrector(pomdp::EvalTabularPOMDP, pred::AbstractVector, a, o::Int)
-    return _sparse_col_mul(pred, pomdp.O[a], o)
+    return NativeSARSOP._sparse_col_mul(pred, pomdp.O[a], o)
 end
 
 function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})
@@ -167,7 +96,7 @@ Calculates the value of a policy recursively to a specified depth, calculating r
 function recursive_evaluation end
 
 
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=[]) where {S,A} #TYLER
+function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=A[]) where {S,A} #TYLER
     d = 1
     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
     s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
@@ -175,7 +104,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, 
     return r
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector) where {S,A}
+function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector{A}) where {S,A}
     a=if d==1 && !isempty(replace)
         replace[1]
     else
