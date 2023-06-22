@@ -8,6 +8,7 @@ using POMDPs
 using POMDPTools
 using LinearAlgebra
 using SparseArrays
+import NativeSARSOP
 
 include("recursive_evaluation.jl")
 include("generation.jl")

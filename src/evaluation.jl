@@ -77,11 +77,12 @@ function eval_pg(
     v_tmp = copy(v_int)
     count = 0
 
+    os = ordered_states(m)
     while norm(diff_mat .= v_p .- v, Inf) > tolerance
         count += 1
         v .= v_p
         for i in 1:length(pg.nodes)
-            for (s_idx, s) in enumerate(ordered_states(m))
+            for (s_idx, s) in enumerate(os)
                 if !isterminal(m, s)
                     a = pg.nodes[i]::A
                     v_int .= 0.0
@@ -89,16 +90,18 @@ function eval_pg(
                     for sp in support(t_dist)
                         sp_idx = stateindex(m, sp)::Int
                         prob_t = pdf(t_dist, sp)
-                        r = rewardfunction(m, s, a, sp)
-                        @. v_int += prob_t * r
-                        o_dist = observation(m, s, a, sp)
-                        for o in support(o_dist)
-                            prob_o = pdf(o_dist, o)
-                            node = get(pg.edges, (i, o), nothing)
-                            if !isnothing(node)
-                                @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
-                                @. v_int += (v_tmp *= γ * prob_t * prob_o)
-                                # v_int += (v_tmp = γ*prob_t*prob_o*v_tmp)
+                        if prob_t > 0.0
+                            r = rewardfunction(m, s, a, sp)
+                            @. v_int += prob_t * r
+                            o_dist = observation(m, s, a, sp)
+                            for o in support(o_dist)
+                                prob_o = pdf(o_dist, o)
+                                node = get(pg.edges, (i, o), nothing)
+                                if !isnothing(node)
+                                    @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
+                                    @. v_int += (v_tmp *= γ * prob_t * prob_o)
+                                    # v_int += (v_tmp = γ*prob_t*prob_o*v_tmp)
+                                end
                             end
                         end
                     end
@@ -110,6 +113,71 @@ function eval_pg(
     return v_p
 end
 
+function sparse_eval_pg(
+    m::POMDP{S,A},
+    s_m::EvalTabularPOMDP,
+    pg::PolicyGraph;
+    tolerance::Float64=0.001,
+    rewardfunction=VecReward(),
+    disc=discount(m)
+) where {S,A}
+
+    #set based on the number of steps to relevant value
+    # disc_io ? γ = discount(m) : γ = 0.99995
+    # isa(disc,Vector) ? γ = diagm(disc) : γ = disc
+    γ = disc
+
+    Nn = length(pg.nodes)
+    Ns = length(states(m))
+    rew_size = size(s_m.R,3)
+
+    v = ones(Nn, Ns, rew_size)
+    v_p = zeros(Nn, Ns, rew_size)
+    diff_mat = Array{Float64,3}(undef, Nn, Ns, rew_size)
+    v_int = Vector{Float64}(undef, rew_size)
+    v_tmp = copy(v_int)
+
+    count = 0
+
+    os = ordered_states(m)
+
+    s_edges = edge_dict_to_array(m,pg)
+
+    while norm(diff_mat .= v_p .- v, Inf) > tolerance
+        count += 1
+        v .= v_p
+        for i in eachindex(pg.nodes)
+            for s_idx in eachindex(os)
+                if !s_m.isterminal[s_idx]
+                    a = pg.nodes[i]::A
+                    a_idx = actionindex(m,a)
+                    @. v_int = s_m.R[s_idx,a_idx]
+                    t_dist = @view s_m.T[a_idx][:,s_idx]
+                    for sp_idx in SparseArrays.nonzeroinds(t_dist)
+                        prob_t = t_dist[sp_idx]
+                        for o_idx in SparseArrays.nonzeroinds(s_edges[i])
+                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]
+                            node = s_edges[i][o_idx]
+                            @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
+                            @. v_int += (v_tmp *= γ * prob_t * prob_o)
+                        end
+                        # o_dist = @view s_m.O2[a_idx][:,sp_idx]
+                        # for o in SparseArrays.nonzeroinds(o_dist)
+                        #     prob_o = o_dist[o]
+                        #     node = s_edges[i][o]
+                        #     if node != 0
+                        #         @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
+                        #         @. v_int += (v_tmp *= γ * prob_t * prob_o)
+                        #     end
+                        # end
+                    end
+                    @inbounds copyto!(view(v_p, i, s_idx, :), v_int)
+                end
+            end
+        end
+    end
+    return v_p
+end
 
 ##Convenience Functions
 """
@@ -164,13 +232,21 @@ function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
             eval_tolerance::Float64=0.001, rewardfunction=VecReward(), sparse=true)
     # @show rewardfunction
     # println("Generate PG")
+    a = rand(actions(m))
+    s = rand(initialstate(m))
+    rew_size = length(rewardfunction(m, s, a))
+
+    s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len = rew_size)
+
     if sparse == false
         pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
     else
-        pg = sparse_recursive_tree(m, updater, pol, b0, depth;replace=replace)
+        pg = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace)
     end
     # println("Evaluate PG")
-    values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    values = sparse_eval_pg(m, s_m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    # values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+   
     i = pg.node1
     first_node = values[i, :, :]
     if length(support(b0)) == size(first_node)[1]
@@ -179,4 +255,20 @@ function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
         throw("Belief and result columns are different
               sizes: $(length(support(b))), $(size(first_node)[1])")
     end
+end
+
+function edge_dict_to_array(m,pg)
+    # @show length(ordered_observations(m))
+    E = [sparse(Int.(zeros(length(ordered_observations(m))))) for _ in eachindex(pg.nodes)]
+    for node in eachindex(pg.nodes)
+        # @show node
+        for (i,o) in enumerate(ordered_observations(m))
+            new_node = get(pg.edges, (node, o), nothing)
+            # @show new_node
+            if !isnothing(new_node)
+                E[node][i] = new_node
+            end
+        end
+    end
+    return E
 end
