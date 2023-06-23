@@ -90,7 +90,11 @@ end
     @info recur_res
     @show pg_res[1]-recur_res
     @test isapprox(pg_res[1],recur_res;atol=0.0001)
-    @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
+    old_pg = gen_belief_value(m_tuple..., h,old_eval=true)
+    @show old_pg[1]
+    @show old_pg[1]-pg_res[1]
+    @test isapprox(old_pg[1],recur_res;atol=0.0001)
+    # @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
 end
 
 # @testset "GridWorldPOMDP" begin

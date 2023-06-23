@@ -296,7 +296,7 @@ function gen_belief_value end
 
 function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; replace=[],
-            eval_tolerance::Float64=0.001, rewardfunction=VecReward(), beliefbased=true)
+            eval_tolerance::Float64=0.001, rewardfunction=VecReward(), beliefbased=true,old_eval=false)
     # @show rewardfunction
     # println("Generate PG")
     a = rand(actions(m))
@@ -305,13 +305,19 @@ function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len = rew_size)
 
-    if beliefbased == false
-        # pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
+    if old_eval==true
+        @show "old"
         pg = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace)
-        values = sparse_eval_pg(m, s_m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+        values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     else
-        pg,bels = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace,return_bels=true)
-        values = sparse_eval_pg(m, s_m, pg, bels; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+        if beliefbased == false
+            # pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
+            pg = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace)
+            values = sparse_eval_pg(m, s_m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+        else
+            pg,bels = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace,return_bels=true)
+            values = sparse_eval_pg(m, s_m, pg, bels; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+        end
     end
     # println("Evaluate PG")
     
