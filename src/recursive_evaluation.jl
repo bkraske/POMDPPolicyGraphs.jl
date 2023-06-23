@@ -90,7 +90,7 @@ end
 """
     recursive_evaluation(pomdp::POMDP, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int)
 
-Calculates the value of a policy recursively to a specified depth, calculating reward according to 'rew_f', the reward function passed.
+    Calculates the value of a policy recursively to a specified depth, calculating reward according to `rew_f``, the reward function passed.
 
 """
 function recursive_evaluation end

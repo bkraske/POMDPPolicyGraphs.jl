@@ -15,15 +15,13 @@ include("generation.jl")
 include("evaluation.jl")
 
 export
-GrzesPolicyGraph,
-policy_tree,
-equivalent_cp,
-policy2fsc,
-gen_eval_pg,
-gen_belief_value,
 VecReward,
 EvalTabularPOMDP,
+sparse_recursive_tree,
+sparse_eval_pg,
+gen_eval_pg,
+get_belief_value,
+gen_belief_value,
 recursive_evaluation
-
 
 end # module
