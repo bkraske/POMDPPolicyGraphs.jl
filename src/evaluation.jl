@@ -179,6 +179,73 @@ function sparse_eval_pg(
     return v_p
 end
 
+function sparse_eval_pg(
+    m::POMDP{S,A},
+    s_m::EvalTabularPOMDP,
+    pg::PolicyGraph,
+    b_list::Vector{SparseArrays.SparseVector{Float64, Int64}};
+    tolerance::Float64=0.001,
+    rewardfunction=VecReward(),
+    disc=discount(m)
+) where {S,A}
+
+    #set based on the number of steps to relevant value
+    # disc_io ? γ = discount(m) : γ = 0.99995
+    # isa(disc,Vector) ? γ = diagm(disc) : γ = disc
+    γ = disc
+
+    Nn = length(pg.nodes)
+    Ns = length(states(m))
+    rew_size = size(s_m.R,3)
+
+    v = ones(Nn, Ns, rew_size)
+    v_p = zeros(Nn, Ns, rew_size)
+    diff_mat = Array{Float64,3}(undef, Nn, Ns, rew_size)
+    v_int = Vector{Float64}(undef, rew_size)
+    v_tmp = copy(v_int)
+
+    count = 0
+
+    os = ordered_states(m)
+
+    s_edges = edge_dict_to_array(m,pg)
+
+    while norm(diff_mat .= v_p .- v, Inf) > tolerance
+        count += 1
+        v .= v_p
+        for i in eachindex(pg.nodes)
+            for s_idx in SparseArrays.nonzeroinds(b_list[i])
+                if !s_m.isterminal[s_idx]
+                    a = pg.nodes[i]::A
+                    a_idx = actionindex(m,a)
+                    @. v_int = s_m.R[s_idx,a_idx]
+                    t_dist = @view s_m.T[a_idx][:,s_idx]
+                    for sp_idx in SparseArrays.nonzeroinds(t_dist)
+                        prob_t = t_dist[sp_idx]
+                        for o_idx in SparseArrays.nonzeroinds(s_edges[i])
+                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]
+                            node = s_edges[i][o_idx]
+                            @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
+                            @. v_int += (v_tmp *= γ * prob_t * prob_o)
+                        end
+                        # o_dist = @view s_m.O2[a_idx][:,sp_idx]
+                        # for o in SparseArrays.nonzeroinds(o_dist)
+                        #     prob_o = o_dist[o]
+                        #     node = s_edges[i][o]
+                        #     if node != 0
+                        #         @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
+                        #         @. v_int += (v_tmp *= γ * prob_t * prob_o)
+                        #     end
+                        # end
+                    end
+                    @inbounds copyto!(view(v_p, i, s_idx, :), v_int)
+                end
+            end
+        end
+    end
+    return v_p
+end
+
 ##Convenience Functions
 """
     gen_eval_pg(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int, eval_tolerance::Float64=0.001, rewardfunction=VecReward())
@@ -229,7 +296,7 @@ function gen_belief_value end
 
 function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, 
             b0::DiscreteBelief, depth::Int; replace=[],
-            eval_tolerance::Float64=0.001, rewardfunction=VecReward(), sparse=true)
+            eval_tolerance::Float64=0.001, rewardfunction=VecReward(), beliefbased=true)
     # @show rewardfunction
     # println("Generate PG")
     a = rand(actions(m))
@@ -238,13 +305,16 @@ function gen_belief_value(m::POMDP, updater::Updater, pol::AlphaVectorPolicy,
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len = rew_size)
 
-    if sparse == false
-        pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
-    else
+    if beliefbased == false
+        # pg = policy2fsc(m, updater, pol, b0, depth;replace=replace)
         pg = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace)
+        values = sparse_eval_pg(m, s_m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    else
+        pg,bels = sparse_recursive_tree(m, s_m, updater, pol, b0, depth;replace=replace,return_bels=true)
+        values = sparse_eval_pg(m, s_m, pg, bels; tolerance=eval_tolerance, rewardfunction=rewardfunction)
     end
     # println("Evaluate PG")
-    values = sparse_eval_pg(m, s_m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
+    
     # values = eval_pg(m, pg; tolerance=eval_tolerance, rewardfunction=rewardfunction)
    
     i = pg.node1

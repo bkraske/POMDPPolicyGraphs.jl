@@ -101,7 +101,7 @@ function sparse_recursive_tree(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Upd
     end
 end
 
-function sparse_recursive_tree(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=A[]) where {S,A}
+function sparse_recursive_tree(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=A[],return_bels=false) where {S,A}
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
     action_list = A[]
     b_list = SparseVector{Float64, Int64}[]
@@ -119,8 +119,11 @@ function sparse_recursive_tree(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater
     oo = ordered_observations(m)
     oa = ordered_actions(m)
     sparse_recursive_tree(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa)
-
-    return PolicyGraph(action_list, edge_list, 1)
+    if !return_bels
+        return PolicyGraph(action_list, edge_list, 1)
+    else
+        return PolicyGraph(action_list, edge_list, 1), b_list
+    end
 end
 
 

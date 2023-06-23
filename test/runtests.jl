@@ -45,7 +45,7 @@ end
 function pg_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = gen_belief_value(m_tuple..., h)
-    return compare_pg_rollout(m_tuple..., pg_res;h=500)
+    return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=30000)
 end
 
 function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
@@ -55,7 +55,7 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
 end
 
 @testset "Policy Graph" begin
-    testh = 30
+    testh = 40
     @test pg_vs_mc(rs;h=testh)
     @test pg_vs_mc(tiger;h=testh)
     @test pg_vs_mc(cb;h=testh)
