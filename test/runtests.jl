@@ -13,7 +13,7 @@ tm = TMaze()
 mh = MiniHallway()
 gw = ConstrainedPOMDPModels.GridWorldPOMDP()
 
-function get_policy(m::POMDP; solver=SARSOPSolver(;max_time=typemax(Float64)))
+function get_policy(m::POMDP; solver=SARSOPSolver(;max_time=10.0))
     #Solve Problem
     pol = solve(solver, m)
     up = DiscreteUpdater(m)
@@ -55,7 +55,7 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=500
 end
 
 @testset "Policy Graph" begin
-    testh = 40
+    testh = 50
     n_runs = 30000
     @test pg_vs_mc(tiger;h=testh,runs=n_runs)
     @test pg_vs_mc(cb;h=testh,runs=n_runs)
@@ -81,8 +81,8 @@ end
 
 @testset "RockSample sameness" begin
     solver=SARSOPSolver(;max_time=10.0)
-    h=50
-    runs=30000
+    h=60
+    runs=30000#50000
     m_tuple = get_policy(rs; solver=solver)
     pg_res = gen_belief_value(m_tuple..., h)
     @info pg_res[1]
@@ -90,11 +90,7 @@ end
     @info recur_res
     @show pg_res[1]-recur_res
     @test isapprox(pg_res[1],recur_res;atol=0.0001)
-    old_pg = gen_belief_value(m_tuple..., h,old_eval=true)
-    @show old_pg[1]
-    @show old_pg[1]-pg_res[1]
-    @test isapprox(old_pg[1],recur_res;atol=0.0001)
-    # @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
+    @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
 end
 
 # @testset "GridWorldPOMDP" begin
