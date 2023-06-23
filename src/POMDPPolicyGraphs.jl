@@ -17,11 +17,11 @@ include("evaluation.jl")
 export
 VecReward,
 EvalTabularPOMDP,
-sparse_recursive_tree,
-sparse_eval_pg,
-gen_eval_pg,
-get_belief_value,
-gen_belief_value,
-recursive_evaluation
+gen_polgraph,
+eval_polgraph,
+gen_eval_polgraph,
+calc_belvalue_polgraph,
+belief_value_polgraph,
+belief_value_recursive
 
 end # module

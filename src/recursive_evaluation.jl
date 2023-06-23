@@ -88,23 +88,23 @@ end
 #New Code
 
 """
-    recursive_evaluation(pomdp::POMDP, updater::Updater, pol::Policy, rew_f, b::DiscreteBelief, depth::Int)
+    belief_value_recursive(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=A[])
 
     Calculates the value of a policy recursively to a specified depth, calculating reward according to `rew_f``, the reward function passed.
+    Optionally replace the first action in the Policy Graph with an alternative action, e.g. `replace=[:up]`
 
 """
-function recursive_evaluation end
+function belief_value_recursive end
 
-
-function recursive_evaluation(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=A[]) where {S,A} #TYLER
+function belief_value_recursive(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward(),replace::Vector=A[]) where {S,A} #TYLER
     d = 1
     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
     s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
-    r = recursive_evaluation(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
+    r = belief_value_recursive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
     return r
 end
 
-function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector{A}) where {S,A}
+function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector{A}) where {S,A}
     a=if d==1 && !isempty(replace)
         replace[1]
     else
@@ -120,7 +120,7 @@ function recursive_evaluation(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, upda
             po = sum(bp)
             if po > 0.
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*recursive_evaluation(pomdp, s_pomdp, updater, pol, bp, depth, d, replace)
+                value += discount(s_pomdp)*po*belief_value_recursive(pomdp, s_pomdp, updater, pol, bp, depth, d, replace)
             end    
         end
     end
