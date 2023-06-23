@@ -13,7 +13,7 @@ tm = TMaze()
 mh = MiniHallway()
 gw = ConstrainedPOMDPModels.GridWorldPOMDP()
 
-function get_policy(m::POMDP; solver=SARSOPSolver())
+function get_policy(m::POMDP; solver=SARSOPSolver(;max_time=typemax(Float64)))
     #Solve Problem
     pol = solve(solver, m)
     up = DiscreteUpdater(m)
@@ -42,34 +42,60 @@ function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBe
     return is_pass
 end
 
-function pg_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
+function pg_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = gen_belief_value(m_tuple..., h)
-    return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=30000)
+    return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs) #30000
 end
 
-function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
+function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = recursive_evaluation(m_tuple..., h)
-    return compare_pg_rollout(m_tuple..., pg_res;h=h)
+    return compare_pg_rollout(m_tuple..., pg_res;h=h,runs=runs)
 end
 
 @testset "Policy Graph" begin
     testh = 40
-    @test pg_vs_mc(rs;h=testh)
-    @test pg_vs_mc(tiger;h=testh)
-    @test pg_vs_mc(cb;h=testh)
-    @test pg_vs_mc(mh;h=testh)
-    @test pg_vs_mc(tm;h=testh)
-    # @test pg_vs_mc(gw;h=testh)
+    n_runs = 30000
+    @test pg_vs_mc(tiger;h=testh,runs=n_runs)
+    @test pg_vs_mc(cb;h=testh,runs=n_runs)
+    @test pg_vs_mc(mh;h=testh,runs=n_runs)
+    @test pg_vs_mc(tm;h=testh,runs=n_runs)
 end
 
 @testset "Recursive Evaluation" begin
     testh = 20
-    @test recur_vs_mc(rs;h=testh)
-    @test recur_vs_mc(tiger;h=testh)
-    @test recur_vs_mc(cb;h=testh)
-    @test recur_vs_mc(mh;h=testh)
-    @test recur_vs_mc(tm;h=testh)
-    # @test recur_vs_mc(gw;h=testh)
+    n_runs = 30000
+    @test recur_vs_mc(tiger;h=testh,runs=n_runs)
+    @test recur_vs_mc(cb;h=testh,runs=n_runs)
+    @test recur_vs_mc(mh;h=testh,runs=n_runs)
+    @test recur_vs_mc(tm;h=testh,runs=n_runs)
 end
+
+@testset "RockSample Tests" begin
+    testh = 45
+    n_runs = 10000
+    @test pg_vs_mc(rs;h=testh,runs=n_runs)
+    @test recur_vs_mc(rs;h=testh,runs=n_runs)
+end
+
+@testset "RockSample sameness" begin
+    solver=SARSOPSolver(;max_time=10.0)
+    h=50
+    runs=30000
+    m_tuple = get_policy(rs; solver=solver)
+    pg_res = gen_belief_value(m_tuple..., h)
+    @info pg_res[1]
+    recur_res = recursive_evaluation(m_tuple..., h)[1]
+    @info recur_res
+    @show pg_res[1]-recur_res
+    @test isapprox(pg_res[1],recur_res;atol=0.0001)
+    @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
+end
+
+# @testset "GridWorldPOMDP" begin
+#     h = 5
+#     n_runs = 10000
+#     @test pg_vs_mc(gw;h=testh,runs=n_runs)
+#     @test recur_vs_mc(gw;h=testh,runs=n_runs)
+# end
