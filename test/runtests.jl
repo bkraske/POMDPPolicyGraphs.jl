@@ -3,6 +3,7 @@ using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
+using ConstrainedPOMDPModels
 # using .POMDPPolicyGraphs
 
 rs = RockSamplePOMDP(5,7)
@@ -10,6 +11,7 @@ tiger = TigerPOMDP()
 cb = BabyPOMDP()
 tm = TMaze()
 mh = MiniHallway()
+gw = ConstrainedPOMDPModels.GridWorldPOMDP()
 
 function get_policy(m::POMDP; solver=SARSOPSolver())
     #Solve Problem
@@ -53,12 +55,13 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(),h=15)
 end
 
 @testset "Policy Graph" begin
-    testh = 20
-    @test pg_vs_mc(rs;h=testh) #Intermittant Failure
+    testh = 30
+    @test pg_vs_mc(rs;h=testh)
     @test pg_vs_mc(tiger;h=testh)
     @test pg_vs_mc(cb;h=testh)
     @test pg_vs_mc(mh;h=testh)
-    @test pg_vs_mc(tm;h=testh) #Consistently fails
+    @test pg_vs_mc(tm;h=testh)
+    # @test pg_vs_mc(gw;h=testh)
 end
 
 @testset "Recursive Evaluation" begin
@@ -68,4 +71,5 @@ end
     @test recur_vs_mc(cb;h=testh)
     @test recur_vs_mc(mh;h=testh)
     @test recur_vs_mc(tm;h=testh)
+    # @test recur_vs_mc(gw;h=testh)
 end
