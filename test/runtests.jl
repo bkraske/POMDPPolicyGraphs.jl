@@ -1,17 +1,17 @@
-include("restore_unregistered.jl")
+# include("restore_unregistered.jl")
 using POMDPPolicyGraphs
 using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
-using ConstrainedPOMDPModels
+# using ConstrainedPOMDPModels
 
 rs = RockSamplePOMDP(5,7)
 tiger = TigerPOMDP()
 cb = BabyPOMDP()
 tm = TMaze()
 mh = MiniHallway()
-gw = ConstrainedPOMDPModels.GridWorldPOMDP()
+# gw = ConstrainedPOMDPModels.GridWorldPOMDP()
 
 function get_policy(m::POMDP; solver=SARSOPSolver(;max_time=10.0))
     #Solve Problem
@@ -54,6 +54,28 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=500
     return compare_pg_rollout(m_tuple..., pg_res;h=h,runs=runs)
 end
 
+function multirew(m,s,a)
+    return [reward(m,s,a) reward(m,s,a)]
+end
+
+function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
+    @info m
+    m_tuple = get_policy(m::POMDP; solver=solver)
+    pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew)
+    @info pg_res
+    @info pg_res[1]==pg_res[2]
+    return pg_res[1]==pg_res[2]
+end
+
+function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
+    @info m
+    m_tuple = get_policy(m::POMDP; solver=solver)
+    pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
+    @info pg_res
+    @info pg_res[1]==pg_res[2]
+    return pg_res[1]==pg_res[2]
+end
+
 @testset "Policy Graph" begin
     testh = 55
     n_runs = 40000
@@ -91,6 +113,22 @@ end
     @show pg_res[1]-recur_res
     @test isapprox(pg_res[1],recur_res;atol=0.0001)
     @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
+end
+
+@testset "Vectorized Reward PG" begin
+    testh=60
+    @test vector_test_pg(tiger;h=testh)
+    @test vector_test_pg(cb;h=testh)
+    @test vector_test_pg(mh;h=testh)
+    @test vector_test_pg(tm;h=testh)
+end
+
+@testset "Vectorized Reward Recur" begin
+    testh=20
+    @test vector_test_r(tiger;h=testh)
+    @test vector_test_r(cb;h=testh)
+    @test vector_test_r(mh;h=testh)
+    @test vector_test_r(tm;h=testh)
 end
 
 # @testset "GridWorldPOMDP" begin
