@@ -1,10 +1,10 @@
-# using POMDPPolicyGraphs
+include("restore_unregistered.jl")
+using POMDPPolicyGraphs
 using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
 using ConstrainedPOMDPModels
-# using .POMDPPolicyGraphs
 
 rs = RockSamplePOMDP(5,7)
 tiger = TigerPOMDP()
