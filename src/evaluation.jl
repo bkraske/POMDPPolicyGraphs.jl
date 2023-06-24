@@ -117,7 +117,7 @@ function eval_polgraph_nb(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph,
                 if !s_m.isterminal[s_idx]
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
-                    @. v_int = s_m.R[s_idx,a_idx]
+                    @. v_int = s_m.R[s_idx,a_idx,:]
                     t_dist = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
                         prob_t = t_dist[sp_idx]
@@ -162,7 +162,7 @@ function eval_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGraph,
                 if !s_m.isterminal[s_idx]
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
-                    @. v_int = s_m.R[s_idx,a_idx]
+                    @. v_int = s_m.R[s_idx,a_idx,:]
                     t_dist = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
                         prob_t = t_dist[sp_idx]
