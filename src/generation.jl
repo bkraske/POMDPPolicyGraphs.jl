@@ -6,6 +6,8 @@ struct PolicyGraph{N,E} <: Policy
     beliefs::Vector{SparseVector{Float64, Int64}}
 end
 
+##TO DO: Implement function for checking if belief is terminal
+
 ##Recursive Tree Method
 """
     gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=A[],return_beliefs::Bool=false)

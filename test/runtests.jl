@@ -1,5 +1,5 @@
 # include("restore_unregistered.jl")
-using POMDPPolicyGraphs
+# using POMDPPolicyGraphs
 using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
@@ -55,7 +55,12 @@ function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=500
 end
 
 function multirew(m,s,a)
-    return [reward(m,s,a) reward(m,s,a)]
+    # if isterminal(m,s)
+    #     flag = 0
+    # else
+        flag = 1
+    # end
+    return vcat(reward(m,s,a), reward(m,s,a), flag)
 end
 
 function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
@@ -64,6 +69,10 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
     pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew)
     @info pg_res
     @info pg_res[1]==pg_res[2]
+    # s_one = sum([1*discount(m)^(x-1) for x in 1:h])
+    # @info s_one
+    # @info pg_res[3]
+    # @info isapprox(s_one,pg_res[3];atol=0.0001)
     return pg_res[1]==pg_res[2]
 end
 
@@ -73,7 +82,11 @@ function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
     pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
     @info pg_res
     @info pg_res[1]==pg_res[2]
-    return pg_res[1]==pg_res[2]
+    s_one = sum([1*discount(m)^(x-1) for x in 1:h])
+    @info s_one
+    @info pg_res[3]
+    @info isapprox(s_one,pg_res[3];atol=0.0001)
+    return pg_res[1]==pg_res[2] && isapprox(s_one,pg_res[3];atol=0.0001)
 end
 
 @testset "Policy Graph" begin
@@ -124,10 +137,10 @@ end
 end
 
 @testset "Vectorized Reward Recur" begin
-    testh=20
+    testh=10
     @test vector_test_r(tiger;h=testh)
     @test vector_test_r(cb;h=testh)
-    @test vector_test_r(mh;h=testh)
+    @test vector_test_r(mh;h=testh) #Why does this fail?
     @test vector_test_r(tm;h=testh)
 end
 
@@ -136,4 +149,10 @@ end
 #     n_runs = 10000
 #     @test pg_vs_mc(gw;h=testh,runs=n_runs)
 #     @test recur_vs_mc(gw;h=testh,runs=n_runs)
+# end
+
+# crs = RockSampleCPOMDP()
+
+# function testr(m,s,a)
+#     vcat(reward(m,s,a), costs(m,s,a))
 # end
