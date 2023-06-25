@@ -4,6 +4,7 @@ using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
+# using ConstrainedPOMDPs
 # using ConstrainedPOMDPModels
 
 rs = RockSamplePOMDP(5,7)
@@ -42,6 +43,80 @@ function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBe
     return is_pass
 end
 
+function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len;
+    runs=5000,h=15)
+    @info m
+    @show h
+    #Do MC Sims
+    results = []
+    for _ in 1:runs
+        s = rand(bel0)
+        b = bel0
+        r_total = zeros(r_len)
+        d = 1.0
+        count = 0
+        while !isterminal(m, s) && count < h
+            count += 1
+            a = action(pol, b)
+            r_total .+= d*rew_f(m,s,a)
+            s, o = @gen(:sp,:o)(m, s, a)
+            b = update(up,b,a,o)
+            d *= discount(m)
+        end
+        push!(results,r_total)
+    end
+    mc_res = mean(results)
+    mc_res_sem = 3 * std(results) / sqrt(runs)
+
+    bel_val = pg_val
+    #Compare and Report
+    @show mc_res
+    @show bel_val
+    @show typeof(mc_res)
+    @show typeof(bel_val')
+    is_pass = (abs.(mc_res-bel_val')<mc_res_sem)
+    @info "Difference is $(mc_res-bel_val'), 3 SEM is $mc_res_sem"
+    @info "Passing: $is_pass"
+    return is_pass
+end
+
+function compare_r_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len;
+    runs=5000,h=15)
+    @info m
+    @show h
+    #Do MC Sims
+    results = []
+    for _ in 1:runs
+        s = rand(bel0)
+        b = bel0
+        r_total = zeros(r_len)
+        d = 1.0
+        count = 0
+        while !isterminal(m, s) && count < h
+            count += 1
+            a = action(pol, b)
+            r_total .+= d*rew_f(m,s,a)
+            s, o = @gen(:sp,:o)(m, s, a)
+            b = update(up,b,a,o)
+            d *= discount(m)
+        end
+        push!(results,r_total)
+    end
+    mc_res = mean(results)
+    mc_res_sem = 3 * std(results) / sqrt(runs)
+
+    bel_val = pg_val
+    #Compare and Report
+    @show mc_res
+    @show bel_val
+    @show typeof(mc_res)
+    @show typeof(bel_val)
+    is_pass = (abs.(mc_res-bel_val)<mc_res_sem)
+    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Passing: $is_pass"
+    return is_pass
+end
+
 function pg_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = belief_value_polgraph(m_tuple..., h)
@@ -63,7 +138,7 @@ function multirew(m,s,a)
     return vcat(reward(m,s,a), reward(m,s,a), flag)
 end
 
-function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
+function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
     @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew)
@@ -73,10 +148,11 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
     # @info s_one
     # @info pg_res[3]
     # @info isapprox(s_one,pg_res[3];atol=0.0001)
-    return pg_res[1]==pg_res[2]
+    return pg_res[1]==pg_res[2] && compare_pg_rollout_vec(m_tuple..., pg_res,
+            multirew,3;h=1000,runs=runs)
 end
 
-function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
+function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
     @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
@@ -86,7 +162,9 @@ function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15)
     @info s_one
     @info pg_res[3]
     @info isapprox(s_one,pg_res[3];atol=0.0001)
-    return pg_res[1]==pg_res[2] && isapprox(s_one,pg_res[3];atol=0.0001)
+    return pg_res[1]==pg_res[2]&&compare_r_rollout_vec(m_tuple..., pg_res,
+    multirew,3;h=h,runs=runs) 
+    #&& isapprox(s_one,pg_res[3];atol=0.0001)
 end
 
 @testset "Policy Graph" begin
@@ -130,18 +208,22 @@ end
 
 @testset "Vectorized Reward PG" begin
     testh=60
-    @test vector_test_pg(tiger;h=testh)
-    @test vector_test_pg(cb;h=testh)
-    @test vector_test_pg(mh;h=testh)
-    @test vector_test_pg(tm;h=testh)
+    nruns=2000
+    @test vector_test_pg(rs;h=testh,runs=nruns)
+    @test vector_test_pg(tiger;h=testh,runs=nruns)
+    @test vector_test_pg(cb;h=testh,runs=nruns)
+    @test vector_test_pg(mh;h=testh,runs=nruns)
+    @test vector_test_pg(tm;h=testh,runs=nruns)
 end
 
 @testset "Vectorized Reward Recur" begin
     testh=10
-    @test vector_test_r(tiger;h=testh)
-    @test vector_test_r(cb;h=testh)
-    @test vector_test_r(mh;h=testh) #Why does this fail?
-    @test vector_test_r(tm;h=testh)
+    nruns=1000
+    @test vector_test_r(rs;h=testh,runs=nruns)
+    @test vector_test_r(tiger;h=testh,runs=nruns)
+    @test vector_test_r(cb;h=testh,runs=nruns)
+    @test vector_test_r(mh;h=testh,runs=nruns) #Why does this fail?
+    @test vector_test_r(tm;h=testh,runs=nruns)
 end
 
 # @testset "GridWorldPOMDP" begin
