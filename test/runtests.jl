@@ -70,10 +70,11 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
 
     bel_val = pg_val
     #Compare and Report
+    @info pg_res[1]==pg_res[2]
     @show mc_res
     @show bel_val
-    @show typeof(mc_res)
-    @show typeof(bel_val')
+    # @show typeof(mc_res)
+    # @show typeof(bel_val')
     is_pass = (abs.(mc_res-bel_val')<mc_res_sem)
     @info "Difference is $(mc_res-bel_val'), 3 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
@@ -107,10 +108,11 @@ function compare_r_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discret
 
     bel_val = pg_val
     #Compare and Report
+    @info pg_res[1]==pg_res[2]
     @show mc_res
     @show bel_val
-    @show typeof(mc_res)
-    @show typeof(bel_val)
+    # @show typeof(mc_res)
+    # @show typeof(bel_val)
     is_pass = (abs.(mc_res-bel_val)<mc_res_sem)
     @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
@@ -139,11 +141,10 @@ function multirew(m,s,a)
 end
 
 function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
-    @info m
+    # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew)
-    @info pg_res
-    @info pg_res[1]==pg_res[2]
+    # @info pg_res
     # s_one = sum([1*discount(m)^(x-1) for x in 1:h])
     # @info s_one
     # @info pg_res[3]
@@ -153,11 +154,11 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=
 end
 
 function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
-    @info m
+    # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
-    @info pg_res
-    @info pg_res[1]==pg_res[2]
+    # @info pg_res
+    # @info pg_res[1]==pg_res[2]
     s_one = sum([1*discount(m)^(x-1) for x in 1:h])
     @info s_one
     @info pg_res[3]
@@ -207,7 +208,7 @@ end
 end
 
 @testset "Vectorized Reward PG" begin
-    testh=60
+    testh=65
     nruns=2000
     @test vector_test_pg(rs;h=testh,runs=nruns)
     @test vector_test_pg(tiger;h=testh,runs=nruns)
