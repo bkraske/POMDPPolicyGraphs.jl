@@ -27,7 +27,7 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol
         for o in axes(obs,2)
             bp = corrector(s_pomdp, pred, a_old, o)
             po = sum(bp)
-            if po > 0.
+            if po > 0. && !isterminalbelief(s_pomdp,bp)
                 bp.nzval ./= po
                 bp_idx = findall(x->x==bp, b_list)
                 if !isempty(bp_idx) #bp ∈ b_list

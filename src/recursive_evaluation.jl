@@ -85,6 +85,10 @@ function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Flo
     return actionindex(pomdp,best_action)
 end
 
+function isterminalbelief(s_pomdp::EvalTabularPOMDP,b::SparseVector{Float64, Int64})
+    return all(s_pomdp.isterminal[SparseArrays.nonzeroinds(b)])
+end
+
 #New Code
 
 """
@@ -118,7 +122,7 @@ function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, up
         for o in axes(obs,2)
             bp = corrector(s_pomdp, pred, a, o)
             po = sum(bp)
-            if po > 0.
+            if po > 0. && !isterminalbelief(s_pomdp,bp)
                 bp.nzval ./= po
                 value += discount(s_pomdp)*po*belief_value_recursive(pomdp, s_pomdp, updater, pol, bp, depth, d, replace)
             end    
