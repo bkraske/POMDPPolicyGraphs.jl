@@ -82,7 +82,7 @@ end
 function eval_polgraph(m::POMDP{S,A},pg::PolicyGraph;
     tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false,rewardfunction=VecReward()) where {S,A}
     a = first(actions(m))
-    s = first(initialstate(m))
+    s = rand(initialstate(m))
     rew_size = length(rewardfunction(m, s, a))
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len = rew_size)
@@ -197,7 +197,7 @@ function gen_eval_polgraph end
 function gen_eval_polgraph(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy,b0::DiscreteBelief, depth::Int; 
     eval_tolerance::Float64=0.001, rewardfunction=VecReward(), disc=discount(m), replace=A[], use_beliefs::Bool=true) where {S,A}
     a = first(actions(m))
-    s = first(initialstate(m))
+    s = rand(initialstate(m))
     rew_size = length(rewardfunction(m, s, a))
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len=rew_size)
