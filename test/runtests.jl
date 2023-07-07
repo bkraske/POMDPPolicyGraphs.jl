@@ -74,8 +74,8 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
     @show mc_res
     @show bel_val
     # @show typeof(mc_res)
-    # @show typeof(bel_val')
-    @show vec_pass = abs.(mc_res-bel_val').<mc_res_sem
+    # @show typeof(bel_val)
+    @show vec_pass = abs.(mc_res-bel_val).<mc_res_sem
     is_pass = all(x->x==1,vec_pass)
     if vec_pass[3] == 0 && isapprox(mc_res_sem[3],0.0;atol=1e-5)
         @info "____WARNING: Very little variance in third category, checking evaluation tolerance."
@@ -84,7 +84,7 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
             is_pass = true
         end
     end
-    @info "Difference is $(mc_res-bel_val'), 3 SEM is $mc_res_sem"
+    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
     return is_pass
 end
@@ -234,7 +234,7 @@ end
 
 @testset "Vectorized Reward Recur" begin
     testh=20
-    nruns=1000
+    nruns=5000
     @test vector_test_r(rs;h=testh,runs=nruns)
     @test vector_test_r(tiger;h=testh,runs=nruns)
     @test vector_test_r(cb;h=testh,runs=nruns)

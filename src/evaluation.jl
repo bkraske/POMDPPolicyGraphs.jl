@@ -220,7 +220,8 @@ function calc_belvalue_polgraph(pg::PolicyGraph, result::Array, b::DiscreteBelie
     i = pg.node1
     first_node = result[i, :, :]
     if length(support(b)) == size(first_node)[1]
-        return b.b' * first_node
+        val_mat = b.b' * first_node
+        return val_mat'
     else
         throw("Belief and result columns are different
               sizes: $(length(support(b))), $(size(first_node)[1])")

@@ -19,7 +19,7 @@ end
 """
 function gen_polgraph end
 
-function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa)
+function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa, replace)
     if d < depth
         d+=1
         obs = s_pomdp.O[a_old]
@@ -29,7 +29,11 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol
             po = sum(bp)
             if po > 0. && !isterminalbelief(s_pomdp,bp)
                 bp.nzval ./= po
-                bp_idx = findall(x->x==bp, b_list)
+                if replace
+                    bp_idx = findall(x->x==bp, b_list[2:end]) .+ 1
+                else
+                    bp_idx = findall(x->x==bp, b_list)
+                end
                 if !isempty(bp_idx) #bp ∈ b_list
                     push!(edge_list, (j_old, oo[o]) => bp_idx[1])
                 else
@@ -40,7 +44,7 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol
                     j = copy(length(action_list))
                     push!(edge_list, (j_old, oo[o]) => j)
 
-                    gen_polgraph(m,s_pomdp,updater,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa)
+                    gen_polgraph(m,s_pomdp,updater,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,replace)
                 end
             end    
         end
@@ -64,7 +68,7 @@ function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater
     oo = ordered_observations(m)
     oa = ordered_actions(m)
 
-    gen_polgraph(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa)
+    gen_polgraph(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa, !isempty(replace))
     if !store_beliefs
         return PolicyGraph(action_list, edge_list, 1, SparseVector{Float64, Int64}[])
     else
@@ -74,5 +78,5 @@ end
 
 function gen_polgraph(m::POMDP{S,A}, updater::Updater, pol::Policy, b0::DiscreteBelief, depth::Int; replace::Vector=A[], store_bels::Bool=false) where {S,A}
     s_pomdp = EvalTabularPOMDP(m)
-    return gen_policy_graph(m, s_pomdp, updater, pol, b0, depth; replace=replace, store_bels=store_bels)
+    return gen_polgraph(m, s_pomdp, updater, pol, b0, depth; replace=replace, store_beliefs=store_bels)
 end
