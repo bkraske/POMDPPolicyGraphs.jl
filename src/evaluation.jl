@@ -69,10 +69,10 @@ function eval_polgraph end
 function eval_polgraph(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph;
     tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false) where {S,A}
     if use_beliefs
-        if !isempty(pg.beliefs)
-            return eval_polgraph_b(m, s_m, pg, pg.beliefs, tolerance, disc)
-        else
+        if isempty(pg.beliefs)
             throw("Policy graph belief vector is empty. Either set use_beliefs=false or return beliefs when generating policy graph using store_beliefs=true in gne_polgraph.")
+        else
+            return eval_polgraph_b(m, s_m, pg, pg.beliefs, tolerance, disc)
         end
     else
         return eval_polgraph_nb(m, s_m, pg, tolerance, disc)
@@ -117,12 +117,12 @@ function eval_polgraph_nb(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph,
                 if !s_m.isterminal[s_idx]
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
-                    @. v_int = s_m.R[s_idx,a_idx,:]
-                    t_dist = @view s_m.T[a_idx][:,s_idx]
+                    @. v_int = s_m.R[s_idx,a_idx,:]::Vector{Float64}
+                    t_dist::SparseArrays.SparseVector{Float64, Int64} = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
-                        prob_t = t_dist[sp_idx]
+                        prob_t = t_dist[sp_idx]::Float64
                         for o_idx in SparseArrays.nonzeroinds(s_edges[i])
-                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]
+                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]::Float64
                             node = s_edges[i][o_idx]
                             @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
                             @. v_int += (v_tmp *= γ * prob_t * prob_o)
@@ -162,7 +162,7 @@ function eval_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGraph,
                 if !s_m.isterminal[s_idx]
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
-                    @. v_int = s_m.R[s_idx,a_idx,:]
+                    @. v_int = s_m.R[s_idx,a_idx,:]::Vector{Float64}
                     t_dist = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
                         prob_t = t_dist[sp_idx]
@@ -201,7 +201,6 @@ function gen_eval_polgraph(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPoli
     rew_size = length(rewardfunction(m, s, a))
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len=rew_size)
-
     pg = gen_polgraph(m, s_m, updater, pol, b0, depth; store_beliefs=use_beliefs, replace=replace)
     values = eval_polgraph(m, s_m, pg; tolerance=eval_tolerance, disc=disc, use_beliefs=use_beliefs)
 
@@ -243,7 +242,8 @@ function belief_value_polgraph(m::POMDP{S,A}, updater::Updater, pol::AlphaVector
             b0::DiscreteBelief, depth::Int; eval_tolerance::Float64=0.001, 
             rewardfunction=VecReward(), disc=discount(m), replace=A[], use_beliefs=true) where {S,A}
     
-    values,pg = gen_eval_polgraph(m, updater, pol, b0, depth; eval_tolerance=eval_tolerance, 
+    values,pg = gen_eval_polgraph(m, updater, pol, b0, depth;
+        eval_tolerance=eval_tolerance,
         rewardfunction=rewardfunction, disc=disc, replace=replace, use_beliefs=use_beliefs)
 
     return calc_belvalue_polgraph(pg, values, b0)

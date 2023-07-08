@@ -1,7 +1,7 @@
 #Take Tabular from NativeSARSOP
 struct EvalTabularPOMDP <: POMDP{Int,Int,Int} #From NativeSARSOP
     T::Vector{SparseMatrixCSC{Float64, Int64}} #T[a][sp,s]
-    R::Array{Float64,3} # R[s,a]
+    R::Array{Float64,3} # R[s,a,:]
     O::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][sp, o]
     O2::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][o, sp]
     isterminal::BitVector
