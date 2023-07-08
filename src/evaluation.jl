@@ -163,11 +163,11 @@ function eval_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGraph,
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
                     @. v_int = s_m.R[s_idx,a_idx,:]::Vector{Float64}
-                    t_dist = @view s_m.T[a_idx][:,s_idx]
+                    t_dist::SparseArrays.SparseVector{Float64, Int64} = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
-                        prob_t = t_dist[sp_idx]
+                        prob_t = t_dist[sp_idx]::Float64
                         for o_idx in SparseArrays.nonzeroinds(s_edges[i])
-                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]
+                            prob_o = s_m.O2[a_idx][o_idx,sp_idx]::Float64
                             node = s_edges[i][o_idx]
                             @inbounds copyto!(v_tmp, @view v[node::Int, sp_idx, :])
                             @. v_int += (v_tmp *= γ * prob_t * prob_o)

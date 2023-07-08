@@ -31,7 +31,7 @@ function eval_tabular_rewards(pomdp, S, A, terminal, rew_f, r_len)
             continue
         end
         for (a_idx, a) ∈ enumerate(A)
-            R[s_idx, a_idx, :] .= rew_f(pomdp, s, a)
+            R[s_idx, a_idx, :] .= rew_f(pomdp, s, a)::Vector{Float64}
         end
     end
     R
