@@ -31,14 +31,14 @@ function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBe
         return [:disc_rew => discounted_reward(hist)]
     end
     mc_res = mean(mc_res_raw[!, :disc_rew])
-    mc_res_sem = 3 * std(mc_res_raw[!, :disc_rew]) / sqrt(runs)
+    mc_res_sem = 2 * std(mc_res_raw[!, :disc_rew]) / sqrt(runs)
 
     bel_val = pg_val[1]
     #Compare and Report
     @show mc_res
     @show bel_val[1]
     is_pass = (abs(mc_res-bel_val)<mc_res_sem)
-    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Difference is $(mc_res-bel_val), 2 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
     return is_pass
 end
@@ -66,7 +66,7 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
         push!(results,r_total)
     end
     mc_res = mean(results)
-    mc_res_sem = 3 * std(results) / sqrt(runs)
+    mc_res_sem = 2 * std(results) / sqrt(runs)
 
     bel_val = pg_val
     #Compare and Report
@@ -84,7 +84,7 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
             is_pass = true
         end
     end
-    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Difference is $(mc_res-bel_val), 2 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
     return is_pass
 end
@@ -112,7 +112,7 @@ function compare_r_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discret
         push!(results,r_total)
     end
     mc_res = mean(results)
-    mc_res_sem = 3 * std(results) / sqrt(runs)
+    mc_res_sem = 2 * std(results) / sqrt(runs)
 
     bel_val = pg_val
     #Compare and Report
@@ -128,7 +128,7 @@ function compare_r_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discret
         @info "____WARNING: Difference is on the order of $ttol. Set to passing."
         is_pass = true
     end
-    @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Difference is $(mc_res-bel_val), 2 SEM is $mc_res_sem"
     @info "Passing: $is_pass"
     return is_pass
 end
