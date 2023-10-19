@@ -52,9 +52,31 @@ function edge_dict_to_array(m,pg)
     return E
 end
 
+#PolicyGraphs struct
+struct PolicyGraphEvaluator
+    depth::Int
+    updater::Updater
+    eval_tolerance::Float64
+    eval_discount::Float64
+    use_beliefs::Bool
+end
+
+""" 
+    PolicyGraphEvaluator(depth::Int,updater::Updater,eval_tolerance::Float64,eval_discount::Float64, use_beliefs::Bool)
+    Optionally uses beliefs used to label nodes in PolicyGraph to improve computational efficiency by iterating over only the states in the belief at each node.
 """
-    eval_polgraph(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph;tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false)
-    eval_polgraph(m::POMDP{S,A},pg::PolicyGraph;tolerance::Float64=0.001,rewardfunction=VecReward(),disc=discount(m),use_beliefs::Bool=false)
+
+function PolicyGraphEvaluator(m::POMDP,depth::Int,eval_tolerance::Float64)
+    return PolicyGraphEvaluator(depth,DiscreteUpdater(m),eval_tolerance,discount(m),true)
+end
+
+function PolicyGraphEvaluator(m::POMDP,depth::Int)
+    return PolicyGraphEvaluator(m,depth,0.001)
+end
+
+"""
+    evaluate_polgraph(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph;tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false)
+    evaluate_polgraph(m::POMDP{S,A},pg::PolicyGraph;tolerance::Float64=0.001,rewardfunction=VecReward(),disc=discount(m),use_beliefs::Bool=false)
 
     Evaluates a PolicyGraph using iteration. Returns a value matrix (with each column corresponding to a state and each row corresponding to a graph node)
     Reward function used for evaluation is that used to create the EvalTabularPOMDP struct.
@@ -65,31 +87,31 @@ end
 
     Modified from: https://jair.org/index.php/jair/article/view/11216
 """
-function eval_polgraph end
-function eval_polgraph(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph;
+function evaluate_polgraph end
+function evaluate_polgraph(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph;
     tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false) where {S,A}
     if use_beliefs
         if isempty(pg.beliefs)
             throw("Policy graph belief vector is empty. Either set use_beliefs=false or return beliefs when generating policy graph using store_beliefs=true in gne_polgraph.")
         else
-            return eval_polgraph_b(m, s_m, pg, pg.beliefs, tolerance, disc)
+            return evaluate_polgraph_b(m, s_m, pg, pg.beliefs, tolerance, disc)
         end
     else
-        return eval_polgraph_nb(m, s_m, pg, tolerance, disc)
+        return evaluate_polgraph_nb(m, s_m, pg, tolerance, disc)
     end
 end
 
-function eval_polgraph(m::POMDP{S,A},pg::PolicyGraph;
+function evaluate_polgraph(m::POMDP{S,A},pg::PolicyGraph;
     tolerance::Float64=0.001,disc=discount(m),use_beliefs::Bool=false,rewardfunction=VecReward()) where {S,A}
     a = first(actions(m))
     s = rand(initialstate(m))
     rew_size = length(rewardfunction(m, s, a))
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len = rew_size)
-    return eval_polgraph(m,s_m,pg;tolerance=tolerance,disc=disc,use_beliefs=use_beliefs)
+    return evaluate_polgraph(m,s_m,pg;tolerance=tolerance,disc=disc,use_beliefs=use_beliefs)
 end
 
-function eval_polgraph_nb(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph,
+function evaluate_polgraph_nb(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph,
     tolerance::Float64,disc) where {S,A}
     γ = disc
 
@@ -136,7 +158,7 @@ function eval_polgraph_nb(m::POMDP{S,A},s_m::EvalTabularPOMDP,pg::PolicyGraph,
     return v_p
 end
 
-function eval_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGraph, 
+function evaluate_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGraph, 
     b_list::Vector{SparseArrays.SparseVector{Float64, Int64}},tolerance::Float64,disc) where {S,A}
     γ = disc
 
@@ -201,7 +223,7 @@ function gen_eval_polgraph(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPoli
 
     s_m = EvalTabularPOMDP(m;rew_f=rewardfunction,r_len=rew_size)
     pg = gen_polgraph(m, s_m, updater, pol, b0, depth; store_beliefs=use_beliefs)
-    values = eval_polgraph(m, s_m, pg; tolerance=eval_tolerance, disc=disc, use_beliefs=use_beliefs)
+    values = evaluate_polgraph(m, s_m, pg; tolerance=eval_tolerance, disc=disc, use_beliefs=use_beliefs)
 
     return values, pg
 end
@@ -225,34 +247,23 @@ function calc_belvalue_polgraph(pg::PolicyGraph, result::Array, b::DiscreteBelie
               sizes: $(length(support(b))), $(size(first_node)[1])")
     end
 end
+
 ##Get value from belief and state values
 """
-    belief_value_polgraph(m::POMDP, updater::Updater, pol::AlphaVectorPolicy, b0::DiscreteBelief, depth::Int; eval_tolerance::Float64=0.001, rewardfunction=VecReward(), beliefbased=true)
+    evaluate(evaluator::PolicyGraphEvaluator, m::POMDP{S,A}, pol::Policy, b0::DiscreteBelief; reward_function=VecReward())
 
     Returns value of initial belief using the state values of the first node in the graph.
     
     Optionally pass a custom reward function (which must return a vector) to incorporate cost or other functions.
-    Optionally uses beliefs used to label nodes in PolicyGraph to improve computational efficiency by iterating over only the states in the belief at each node.
 """
-function belief_value_polgraph end
 
-function belief_value_polgraph(m::POMDP{S,A}, updater::Updater, pol::AlphaVectorPolicy, 
-            b0::DiscreteBelief, depth::Int; eval_tolerance::Float64=0.001, 
-            rewardfunction=VecReward(), disc=discount(m), use_beliefs=true) where {S,A}
-    
-    values,pg = gen_eval_polgraph(m, updater, pol, b0, depth;
-        eval_tolerance=eval_tolerance,
-        rewardfunction=rewardfunction, disc=disc, use_beliefs=use_beliefs)
-
-    return calc_belvalue_polgraph(pg, values, b0)
-end
-
-function POMDPTools.evaluate(m::POMDP{S,A}, p::Policy, b0::DiscreteBelief, depth::Int ; reward_function=VecReward(), disc=discount(m), eval_tolerance::Float64=0.001) where {S,A}
+function evaluate(evaluator::PolicyGraphEvaluator, m::POMDP{S,A}, pol::Policy, b0::DiscreteBelief; reward_function=VecReward()) where {S,A}
     @assert b0.pomdp==m
-    updater = DiscreteUpdater(m)
-    values,pg = gen_eval_polgraph(m, updater, pol, b0, depth;
-    eval_tolerance=eval_tolerance,
-    rewardfunction=rewardfunction, disc=disc, use_beliefs=use_beliefs)
+    @assert isa(evaluator.updater,DiscreteUpdater)
+
+    values,pg = gen_eval_polgraph(m, evaluator.updater, pol, b0, evaluator.depth;
+    eval_tolerance=evaluator.eval_tolerance,
+    rewardfunction=reward_function, disc=evaluator.eval_discount, use_beliefs=evaluator.use_beliefs)
 
     return calc_belvalue_polgraph(pg, values, b0)
 end

@@ -124,24 +124,26 @@ function isterminalbelief(s_pomdp::EvalTabularPOMDP,b::SparseVector{Float64, Int
 end
 
 #New Code
+struct ExhaustiveEvaluator
+    depth::Int
+    updater::Updater
+end
 
-"""
-    belief_value_recursive(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward())
+function ExhaustiveEvaluator(m::POMDP,h::Int)
+    return ExhaustiveEvaluator(h,DiscreteUpdater(m))
+end
 
-    Calculates the value of a policy recursively to a specified depth, calculating reward according to `rew_f``, the reward function passed.
-
-"""
-function belief_value_recursive end
-
-function belief_value_recursive(pomdp::POMDP{S,A}, updater::Updater, pol::Policy, b::DiscreteBelief, depth::Int;rewardfunction=VecReward()) where {S,A} #TYLER
+function evaluate(evaluator::ExhaustiveEvaluator, pomdp::POMDP{S,A}, pol::Policy, b::DiscreteBelief; reward_function=VecReward()) where {S,A} #TYLER
+    updater = evaluator.updater
+    depth = evaluator.depth
     d = 1
     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
-    s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
-    r = belief_value_recursive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
+    s_pomdp = EvalTabularPOMDP(pomdp;rew_f=reward_function,r_len=r_dim)
+    r = belief_value_exhaustive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
     return r
 end
 
-function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
+function belief_value_exhaustive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
     a = action_from_vec(pomdp,pol, b)
     value = belief_reward(s_pomdp,b,a)
     if d<depth
@@ -153,7 +155,7 @@ function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, up
             po = sum(bp)
             if po > 0. && !isterminalbelief(s_pomdp,bp)
                 bp.nzval ./= po
-                value += discount(s_pomdp)*po*belief_value_recursive(pomdp, s_pomdp, updater, pol, bp, depth, d)
+                value += discount(s_pomdp)*po*belief_value_exhaustive(pomdp, s_pomdp, updater, pol, bp, depth, d)
             end    
         end
     end

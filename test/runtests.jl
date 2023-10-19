@@ -17,13 +17,13 @@ mh = MiniHallway()
 function get_policy(m::POMDP; solver=SARSOPSolver(;max_time=10.0))
     #Solve Problem
     pol = solve(solver, m)
-    up = DiscreteUpdater(m)
-    bel0 = initialize_belief(up, initialstate(m))
-    return (m, up, pol, bel0)
+    bel0 = initialize_belief(DiscreteUpdater(m), initialstate(m))
+    return (m, pol, bel0)
 end
 
-function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val;
+function compare_pg_rollout(m::POMDP, pol::Policy, bel0::DiscreteBelief, pg_val;
     runs=5000,h=15)
+    up = DiscreteUpdater(m)
     @info m
     #Do MC Sims
     simlist = [Sim(m, pol, up, bel0; max_steps=h) for _ in 1:runs]
@@ -43,8 +43,9 @@ function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBe
     return is_pass
 end
 
-function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len, e_tol;
+function compare_pg_rollout_vec(m::POMDP, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len, e_tol;
     runs=5000,h=15)
+    up = DiscreteUpdater(m)
     @info m
     @show h
     #Do MC Sims
@@ -89,8 +90,9 @@ function compare_pg_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::Discre
     return is_pass
 end
 
-function compare_r_rollout_vec(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len;
+function compare_r_rollout_vec(m::POMDP, pol::Policy, bel0::DiscreteBelief, pg_val, rew_f, r_len;
     runs=5000,h=15)
+    up = DiscreteUpdater(m)
     @info m
     @show h
     #Do MC Sims
@@ -135,13 +137,16 @@ end
 
 function pg_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_polgraph(m_tuple..., h)
+    #(m, up, pol, bel0)
+    evalr = PolicyGraphEvaluator(m_tuple[1],h)
+    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
     return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs) #30000
 end
 
 function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_recursive(m_tuple..., h)
+    evalr = RecursiveEvaluator(m_tuple[1],h)
+    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
     return compare_pg_rollout(m_tuple..., pg_res;h=h,runs=runs)
 end
 
@@ -158,7 +163,9 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     e_tol = 0.0000001
-    pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew,eval_tolerance=e_tol)
+    evalr = PolicyGraphEvaluator(m_tuple[1],h,e_tol)
+    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...;reward_function=multirew)
+    # pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew,eval_tolerance=e_tol)
     # @info pg_res
     # s_one = sum([1*discount(m)^(x-1) for x in 1:h])
     # @info s_one
@@ -171,7 +178,9 @@ end
 function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
+    evalr = ExhaustiveEvaluator(m_tuple[1],h)
+    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...;reward_function=multirew)
+    # pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
     # @info pg_res
     # @info pg_res[1]==pg_res[2]
     s_one = sum([1*discount(m)^(x-1) for x in 1:h])
@@ -213,9 +222,13 @@ end
     h=60
     runs=30000#50000
     m_tuple = get_policy(rs; solver=solver)
-    pg_res = belief_value_polgraph(m_tuple..., h)
+    evalr = PolicyGraphEvaluator(m_tuple[1],h)
+    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
+    # pg_res = belief_value_polgraph(m_tuple..., h)
     @info pg_res[1]
-    recur_res = belief_value_recursive(m_tuple..., h)[1]
+    recur_evalr = RecursiveEvaluator(m_tuple[1],h)
+    recur_res = POMDPPolicyGraphs.evaluate(recur_evalr,m_tuple...)
+    # recur_res = belief_value_recursive(m_tuple..., h)[1]
     @info recur_res
     @show pg_res[1]-recur_res
     @test isapprox(pg_res[1],recur_res;atol=0.0001)
