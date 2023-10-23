@@ -139,14 +139,14 @@ function pg_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
     #(m, up, pol, bel0)
     evalr = PolicyGraphEvaluator(m_tuple[1],h)
-    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
+    pg_res = evaluate(evalr,m_tuple[1:2]...)(m_tuple[3])
     return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs) #30000
 end
 
 function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    evalr = RecursiveEvaluator(m_tuple[1],h)
-    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
+    evalr = ExhaustiveEvaluator(m_tuple[1],h)
+    pg_res = evaluate(evalr,m_tuple[1:2]...)(m_tuple[3])
     return compare_pg_rollout(m_tuple..., pg_res;h=h,runs=runs)
 end
 
@@ -164,7 +164,7 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=
     m_tuple = get_policy(m::POMDP; solver=solver)
     e_tol = 0.0000001
     evalr = PolicyGraphEvaluator(m_tuple[1],h,e_tol)
-    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...;reward_function=multirew)
+    pg_res = evaluate(evalr,m_tuple[1:2]...;rewardfunction=multirew)(m_tuple[3])
     # pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew,eval_tolerance=e_tol)
     # @info pg_res
     # s_one = sum([1*discount(m)^(x-1) for x in 1:h])
@@ -179,7 +179,7 @@ function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=1
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     evalr = ExhaustiveEvaluator(m_tuple[1],h)
-    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...;reward_function=multirew)
+    pg_res = evaluate(evalr,m_tuple[1:2]...;rewardfunction=multirew)(m_tuple[3])
     # pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
     # @info pg_res
     # @info pg_res[1]==pg_res[2]
@@ -201,7 +201,7 @@ end
     @test pg_vs_mc(tm;h=testh,runs=n_runs)
 end
 
-@testset "Recursive Evaluation" begin
+@testset "Exhaustive Evaluation" begin
     testh = 20
     n_runs = 30000
     @test recur_vs_mc(tiger;h=testh,runs=n_runs)
@@ -223,15 +223,15 @@ end
     runs=30000#50000
     m_tuple = get_policy(rs; solver=solver)
     evalr = PolicyGraphEvaluator(m_tuple[1],h)
-    pg_res = POMDPPolicyGraphs.evaluate(evalr,m_tuple...)
+    pg_res = evaluate(evalr,m_tuple[1:2]...)(m_tuple[3])
     # pg_res = belief_value_polgraph(m_tuple..., h)
     @info pg_res[1]
-    recur_evalr = RecursiveEvaluator(m_tuple[1],h)
-    recur_res = POMDPPolicyGraphs.evaluate(recur_evalr,m_tuple...)
+    recur_evalr = ExhaustiveEvaluator(m_tuple[1],h)
+    recur_res = evaluate(recur_evalr,m_tuple[1:2]...)(m_tuple[3])
     # recur_res = belief_value_recursive(m_tuple..., h)[1]
     @info recur_res
-    @show pg_res[1]-recur_res
-    @test isapprox(pg_res[1],recur_res;atol=0.0001)
+    @show pg_res[1]-recur_res[1]
+    @test isapprox(pg_res[1],recur_res[1];atol=0.0001)
     @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
 end
 

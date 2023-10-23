@@ -123,26 +123,6 @@ function isterminalbelief(s_pomdp::EvalTabularPOMDP,b::SparseVector{Float64, Int
     return all(s_pomdp.isterminal[SparseArrays.nonzeroinds(b)])
 end
 
-#New Code
-struct ExhaustiveEvaluator
-    depth::Int
-    updater::Updater
-end
-
-function ExhaustiveEvaluator(m::POMDP,h::Int)
-    return ExhaustiveEvaluator(h,DiscreteUpdater(m))
-end
-
-function evaluate(evaluator::ExhaustiveEvaluator, pomdp::POMDP{S,A}, pol::Policy, b::DiscreteBelief; reward_function=VecReward()) where {S,A} #TYLER
-    updater = evaluator.updater
-    depth = evaluator.depth
-    d = 1
-    r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
-    s_pomdp = EvalTabularPOMDP(pomdp;rew_f=reward_function,r_len=r_dim)
-    r = belief_value_exhaustive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
-    return r
-end
-
 function belief_value_exhaustive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
     a = action_from_vec(pomdp,pol, b)
     value = belief_reward(s_pomdp,b,a)
@@ -161,3 +141,63 @@ function belief_value_exhaustive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, u
     end
     return value
 end
+
+#New Code
+"""
+    ExhaustiveEvaluator(m::POMDP,depth::Int)
+
+    Instantiates an ExhaustiveEvaluator, which evaluates a POMDP policy by building 
+    a policy tree which branches on all observations to some `depth` or until all beliefs 
+    are terminal. Uses `DiscreteUpdater` by default.
+"""
+struct ExhaustiveEvaluator
+    depth::Int
+    updater::Updater
+end
+
+function ExhaustiveEvaluator(m::POMDP,depth::Int)
+    return ExhaustiveEvaluator(depth,DiscreteUpdater(m))
+end
+
+"""
+    Online value function for a policy on a POMDP given a belief.
+    
+    Calculates the value of a policy given some belief using exhaustive evaluation.
+"""
+struct EEValueFunction{M<:POMDP,R} <: Function
+    m::M
+    evaluator::ExhaustiveEvaluator
+    pol::Policy
+    rewardfunction::R
+end
+
+"""
+    evaluate(evaluator::ExhaustiveEvaluator, m::POMDP{S,A}, pol::Policy; rewardfunction=VecReward())
+
+    Returns an EEValueFunction, which calculates the value of a belief using a exhaustive evaluation.
+    
+    Optionally pass a custom reward function (which must return a vector) to incorporate cost or other functions.
+"""
+function POMDPTools.evaluate(evaluator::ExhaustiveEvaluator, m::POMDP{S,A}, pol::Policy; rewardfunction=VecReward()) where {S,A}
+    @assert isa(evaluator.updater,DiscreteUpdater)
+    return EEValueFunction(m,evaluator,pol,rewardfunction)
+end
+
+function (v::EEValueFunction)(b0)
+    @assert b0.pomdp==v.m
+
+    r_dim = length(v.rewardfunction(v.m,ordered_states(v.m)[1],ordered_actions(v.m)[1]))
+    s_pomdp = EvalTabularPOMDP(v.m;rew_f=v.rewardfunction,r_len=r_dim)
+    r = belief_value_exhaustive(v.m, s_pomdp, v.evaluator.updater, v.pol, sparse(b0.b), v.evaluator.depth, 1)
+    return r
+end
+
+# function evaluate(evaluator::ExhaustiveEvaluator, pomdp::POMDP{S,A}, pol::Policy, b::DiscreteBelief; rewardfunction=VecReward()) where {S,A} #TYLER
+#     updater = evaluator.updater
+#     depth = evaluator.depth
+#     d = 1
+#     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
+#     s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
+#     r = belief_value_exhaustive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d)
+#     return r
+# end
