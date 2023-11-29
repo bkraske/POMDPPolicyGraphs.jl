@@ -189,8 +189,8 @@ function evaluate_polgraph_b(m::POMDP{S,A}, s_m::EvalTabularPOMDP, pg::PolicyGra
                 if !s_m.isterminal[s_idx]
                     a = pg.nodes[i]::A
                     a_idx = actionindex(m,a)
-                    @. v_int = s_m.R[s_idx,a_idx,:]
-                    t_dist = s_m.T[a_idx][:,s_idx]
+                    @. v_int = @view s_m.R[s_idx,a_idx,:]
+                    t_dist = @view s_m.T[a_idx][:,s_idx]
                     for sp_idx in SparseArrays.nonzeroinds(t_dist)
                         prob_t = t_dist[sp_idx]
                         for o_idx in SparseArrays.nonzeroinds(s_edges[i])
