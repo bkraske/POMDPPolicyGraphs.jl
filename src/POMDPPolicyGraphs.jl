@@ -22,6 +22,7 @@ eval_polgraph,
 gen_eval_polgraph,
 calc_belvalue_polgraph,
 belief_value_polgraph,
-belief_value_recursive
+belief_value_recursive,
+PolicyGraph
 
 end # module
