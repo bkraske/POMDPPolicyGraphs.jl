@@ -4,6 +4,7 @@ struct PolicyGraph{N,E} <: Policy
     edges::E
     node1::Int64
     beliefs::Vector{SparseVector{Float64, Int64}}
+    node_depth::Vector{Int}
 end
 
 ##TO DO: Implement function for checking if belief is terminal
@@ -19,7 +20,7 @@ end
 """
 function gen_polgraph end
 
-function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa, replace)
+function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa, replace, depth_list)
     if d < depth
         d+=1
         obs = s_pomdp.O[a_old]
@@ -40,11 +41,12 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, updater::Updater, pol
                     a = action_from_vec(m, pol, bp)
                     push!(action_list, oa[a])
                     push!(b_list,bp)
+                    push!(depth_list,d)
                     # @show Vector.(b_list)
                     j = copy(length(action_list))
                     push!(edge_list, (j_old, oo[o]) => j)
 
-                    gen_polgraph(m,s_pomdp,updater,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,replace)
+                    gen_polgraph(m,s_pomdp,updater,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,replace,depth_list)
                 end
             end    
         end
@@ -55,6 +57,7 @@ function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
     action_list = A[]
     b_list = SparseVector{Float64, Int64}[]
+    depth_list = Int[]
     d = 1
     a=if !isempty(replace)
         replace[1]
@@ -63,16 +66,17 @@ function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater
     end::A
     push!(action_list, a)
     push!(b_list,sparse(b0.b))
+    push!(depth_list,d)
     j = copy(length(action_list))
 
     oo = ordered_observations(m)
     oa = ordered_actions(m)
 
-    gen_polgraph(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa, !isempty(replace))
+    gen_polgraph(m, s_pomdp, updater, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa, !isempty(replace),depth_list)
     if !store_beliefs
-        return PolicyGraph(action_list, edge_list, 1, SparseVector{Float64, Int64}[])
+        return PolicyGraph(action_list, edge_list, 1, SparseVector{Float64, Int64}[],depth_list)
     else
-        return PolicyGraph(action_list, edge_list, 1, b_list)
+        return PolicyGraph(action_list, edge_list, 1, b_list, depth_list)
     end
 end
 
