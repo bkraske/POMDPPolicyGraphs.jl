@@ -138,7 +138,11 @@ function belief_value_recursive(pomdp::POMDP{S,A}, updater::Updater, pol::Policy
     d = 1
     r_dim = length(rewardfunction(pomdp,ordered_states(pomdp)[1],ordered_actions(pomdp)[1]))
     s_pomdp = EvalTabularPOMDP(pomdp;rew_f=rewardfunction,r_len=r_dim)
-    r = belief_value_recursive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
+    if isa(pol,AlphaVectorPolicy)
+        r = belief_value_recursive(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
+    else
+        r = belief_value_recursive_na(pomdp, s_pomdp, updater, pol, sparse(b.b), depth, d, replace)
+    end
     return r
 end
 
@@ -147,6 +151,29 @@ function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, up
         replace[1]
     else
         action_from_vec(pomdp,pol, b)
+    end
+    value = belief_reward(s_pomdp,b,a)
+    if d<depth
+        d+=1
+        obs = s_pomdp.O[a]
+        pred = s_pomdp.T[a]*b
+        for o in axes(obs,2)
+            bp = corrector(s_pomdp, pred, a, o)
+            po = sum(bp)
+            if po > 0. && !isterminalbelief(s_pomdp,bp)
+                bp.nzval ./= po
+                value += discount(s_pomdp)*po*belief_value_recursive(pomdp, s_pomdp, updater, pol, bp, depth, d, replace)
+            end    
+        end
+    end
+    return value
+end
+
+function belief_value_recursive_na(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, updater::Updater, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int, replace::Vector{A}) where {S,A}
+    a=if d==1 && !isempty(replace)
+        replace[1]
+    else
+        action(pol, b)
     end
     value = belief_reward(s_pomdp,b,a)
     if d<depth
