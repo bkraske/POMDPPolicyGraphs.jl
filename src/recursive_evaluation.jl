@@ -13,16 +13,60 @@ function  EvalTabularPOMDP(pomdp::POMDP;rew_f=VecReward(),r_len=1)
     S = ordered_states(pomdp)
     A = ordered_actions(pomdp)
 
-    terminal = NativeSARSOP._vectorized_terminal(pomdp, S)
+    terminal = _vectorized_terminal(pomdp, S)
     T = transition_matrix_a_sp_s(pomdp)
     R = eval_tabular_rewards(pomdp, S, A, terminal, rew_f, r_len)
     O1 = POMDPTools.ModelTools.observation_matrix_a_sp_o(pomdp)
     O2 = map(sparse ∘ transpose,O1) ##from PBVI.jl, Tyler
-    b0 = NativeSARSOP._vectorized_initialstate(pomdp, S)
+    b0 = _vectorized_initialstate(pomdp, S)
     return EvalTabularPOMDP(T,R,O1,O2,terminal,b0,discount(pomdp))
 end
 
+##from NativeSAROP.jl
+function _sparse_col_mul(x::SparseVector{T}, A::SparseMatrixCSC{T}, col::Int) where T
+    n = length(x)
+    xnzind = SparseArrays.nonzeroinds(x)
+    xnzval = SparseArrays.nonzeros(x)
+
+    Anzr = nzrange(A, col)
+    Anzval = @view nonzeros(A)[Anzr]
+    Anzind = @view rowvals(A)[Anzr]
+
+    mx = length(xnzind)
+    mA = length(Anzr)
+
+    cap = min(mx,mA)
+    rind = zeros(Int, cap)
+    rval = zeros(T, cap)
+    ir = 0
+    ix = 1
+    iy = 1
+
+    ir = SparseArrays._binarymap_mode_0!(*, mx, mA, xnzind, xnzval, Anzind, Anzval, rind, rval)
+    resize!(rind, ir)
+    resize!(rval, ir)
+    return SparseVector(n, rind, rval)
+end
+
+
 ##from HSVI4CGCP.jl, Tyler
+function _vectorized_initialstate(pomdp, S)
+    b0 = initialstate(pomdp)
+    b0_vec = Vector{Float64}(undef, length(S))
+    @inbounds for i ∈ eachindex(S, b0_vec)
+        b0_vec[i] = pdf(b0, S[i])
+    end
+    return sparse(b0_vec)
+end
+
+function _vectorized_terminal(pomdp, S)
+    term = BitVector(undef, length(S))
+    @inbounds for i ∈ eachindex(term,S)
+        term[i] = isterminal(pomdp, S[i])
+    end
+    return term
+end
+
 function transition_matrix_a_sp_s(mdp::Union{MDP, POMDP})
     S = ordered_states(mdp)
     A = ordered_actions(mdp)
@@ -103,7 +147,7 @@ POMDPs.discount(pomdp::EvalTabularPOMDP) = pomdp.discount
 belief_reward(s_pomdp::EvalTabularPOMDP, b::SparseVector{Float64, Int64}, a::Int) = [dot(@view(s_pomdp.R[:,a,i]), b) for i in axes(s_pomdp.R,3)]
 
 function corrector(pomdp::EvalTabularPOMDP, pred::AbstractVector, a, o::Int)
-    return NativeSARSOP._sparse_col_mul(pred, pomdp.O[a], o)
+    return _sparse_col_mul(pred, pomdp.O[a], o)
 end
 
 function action_from_vec(pomdp::POMDP,pol::AlphaVectorPolicy,b::SparseVector{Float64, Int64})

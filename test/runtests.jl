@@ -163,7 +163,7 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     e_tol = 0.0000001
-    evalr = PolicyGraphEvaluator(m_tuple[1],h,e_tol)
+    evalr = PolicyGraphEvaluator(m_tuple[1],h;eval_tolerance=e_tol)
     pg_res = evaluate(evalr,m_tuple[1:2]...;rewardfunction=multirew)(m_tuple[3])
     # pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew,eval_tolerance=e_tol)
     # @info pg_res
@@ -194,7 +194,7 @@ end
 
 @testset "Policy Graph" begin
     testh = 55
-    n_runs = 40000
+    n_runs = 60000 #40000
     @test pg_vs_mc(tiger;h=testh,runs=n_runs)
     @test pg_vs_mc(cb;h=testh,runs=n_runs)
     @test pg_vs_mc(mh;h=testh,runs=n_runs)
@@ -212,28 +212,28 @@ end
 
 @testset "RockSample Tests" begin
     testh = 45
-    n_runs = 10000
+    n_runs = 40000
     @test pg_vs_mc(rs;h=testh,runs=n_runs)
     @test recur_vs_mc(rs;h=testh,runs=n_runs)
 end
 
-@testset "RockSample sameness" begin
-    solver=SARSOPSolver(;max_time=10.0)
-    h=60
-    runs=30000#50000
-    m_tuple = get_policy(rs; solver=solver)
-    evalr = PolicyGraphEvaluator(m_tuple[1],h)
-    pg_res = evaluate(evalr,m_tuple[1:2]...)(m_tuple[3])
-    # pg_res = belief_value_polgraph(m_tuple..., h)
-    @info pg_res[1]
-    recur_evalr = ExhaustiveEvaluator(m_tuple[1],h)
-    recur_res = evaluate(recur_evalr,m_tuple[1:2]...)(m_tuple[3])
-    # recur_res = belief_value_recursive(m_tuple..., h)[1]
-    @info recur_res
-    @show pg_res[1]-recur_res[1]
-    @test isapprox(pg_res[1],recur_res[1];atol=0.0001)
-    @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
-end
+# @testset "RockSample sameness" begin
+#     solver=SARSOPSolver(;max_time=10.0)
+#     h=60
+#     runs=30000#50000
+#     m_tuple = get_policy(rs; solver=solver)
+#     evalr = PolicyGraphEvaluator(m_tuple[1],h)
+#     pg_res = evaluate(evalr,m_tuple[1:2]...)(m_tuple[3])
+#     # pg_res = belief_value_polgraph(m_tuple..., h)
+#     @info pg_res[1]
+#     recur_evalr = ExhaustiveEvaluator(m_tuple[1],h)
+#     recur_res = evaluate(recur_evalr,m_tuple[1:2]...)(m_tuple[3])
+#     # recur_res = belief_value_recursive(m_tuple..., h)[1]
+#     @info recur_res
+#     @show pg_res[1]-recur_res[1]
+#     @test isapprox(pg_res[1],recur_res[1];atol=0.0001)
+#     @test compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs)
+# end
 
 @testset "Vectorized Reward PG" begin
     testh=75

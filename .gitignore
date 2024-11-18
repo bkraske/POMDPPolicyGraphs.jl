@@ -25,3 +25,4 @@ Manifest.toml
 
 *.out
 *.pomdpx
+*.jld2
