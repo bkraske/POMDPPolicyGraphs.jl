@@ -13,6 +13,7 @@ import NativeSARSOP
 include("recursive_evaluation.jl")
 include("generation.jl")
 include("evaluation.jl")
+include("simulation.jl")
 
 export
 VecReward,
@@ -23,6 +24,8 @@ gen_eval_polgraph,
 calc_belvalue_polgraph,
 belief_value_polgraph,
 belief_value_recursive,
-PolicyGraph
+PolicyGraph,
+PolicyGraphBelief,
+PolicyGraphUpdater
 
 end # module

@@ -1,11 +1,8 @@
-# include("restore_unregistered.jl")
 # using POMDPPolicyGraphs
 using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
-# using ConstrainedPOMDPs
-# using ConstrainedPOMDPModels
 
 rs = RockSamplePOMDP(5,7)
 tiger = TigerPOMDP()
@@ -39,6 +36,58 @@ function compare_pg_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBe
     @show bel_val[1]
     is_pass = (abs(mc_res-bel_val)<mc_res_sem)
     @info "Difference is $(mc_res-bel_val), 3 SEM is $mc_res_sem"
+    @info "Passing: $is_pass"
+    return is_pass
+end
+
+
+function compare_pg_sims_rollout(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg::PolicyGraph;
+    runs=5000,h=15)
+    @info m
+    #Do MC Sims
+    simlist = [Sim(m, pol, up, bel0; max_steps=h) for _ in 1:runs]
+    mc_res_raw = run(simlist) do sim, hist
+        return [:disc_rew => discounted_reward(hist)]
+    end
+    mc_res = mean(mc_res_raw[!, :disc_rew])
+    mc_res_sem = 3 * std(mc_res_raw[!, :disc_rew]) / sqrt(runs)
+
+    up2 = PolicyGraphUpdater(pg)
+    bel02 = initialize_belief(up2,initialstate(m))
+    simlist2 = [Sim(m, pg, up2, bel02, rand(bel0); max_steps=h) for _ in 1:runs]
+    mc_res_raw2 = run(simlist2) do sim, hist
+        return [:disc_rew => discounted_reward(hist)]
+    end
+    mc_res2 = mean(mc_res_raw2[!, :disc_rew])
+    mc_res_sem2 = 3 * std(mc_res_raw2[!, :disc_rew]) / sqrt(runs)
+
+    #Compare and Report
+    @show mc_res
+    @show mc_res2
+    is_pass = (abs(mc_res-mc_res2)<(mc_res_sem+mc_res2))
+    @info "Difference is $(mc_res-mc_res2), 3 SEM is $mc_res_sem + $mc_res_sem2"
+    @info "Passing: $is_pass"
+    return is_pass
+end
+
+function compare_pg_val_sims(m::POMDP, up::Updater, pol::Policy, bel0::DiscreteBelief, pg::PolicyGraph, pg_val;
+    runs=5000,h=15)
+    @info m
+    #Do MC Sims
+    up2 = PolicyGraphUpdater(pg)
+    bel02 = initialize_belief(up2,initialstate(m))
+    simlist2 = [Sim(m, pg, up2, bel02, rand(bel0); max_steps=h) for _ in 1:runs]
+    mc_res_raw2 = run(simlist2) do sim, hist
+        return [:disc_rew => discounted_reward(hist)]
+    end
+    mc_res2 = mean(mc_res_raw2[!, :disc_rew])
+    mc_res_sem2 = 3 * std(mc_res_raw2[!, :disc_rew]) / sqrt(runs)
+
+    #Compare and Report
+    @show mc_res2
+    @show bel_val[1]
+    is_pass = (abs(mc_res2-bel_val)<mc_res_sem2)
+    @info "Difference is $(mc_res2-bel_val), 3 SEM is $mc_res_sem2"
     @info "Passing: $is_pass"
     return is_pass
 end
@@ -135,13 +184,13 @@ end
 
 function pg_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_polgraph(m_tuple..., h)
+    pg_res = belief_value_polgraph(m_tuple[1], m_tuple[3:end]..., h)
     return compare_pg_rollout(m_tuple..., pg_res;h=500,runs=runs) #30000
 end
 
 function recur_vs_mc(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=5000)
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_recursive(m_tuple..., h)
+    pg_res = belief_value_recursive(m_tuple[1], m_tuple[3:end]..., h)
     return compare_pg_rollout(m_tuple..., pg_res;h=h,runs=runs)
 end
 
@@ -158,7 +207,7 @@ function vector_test_pg(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
     e_tol = 0.0000001
-    pg_res = belief_value_polgraph(m_tuple..., h;rewardfunction=multirew,eval_tolerance=e_tol)
+    pg_res = belief_value_polgraph(m_tuple[1], m_tuple[3:end]..., h;rewardfunction=multirew,eval_tolerance=e_tol)
     # @info pg_res
     # s_one = sum([1*discount(m)^(x-1) for x in 1:h])
     # @info s_one
@@ -171,7 +220,7 @@ end
 function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=10000)
     # @info m
     m_tuple = get_policy(m::POMDP; solver=solver)
-    pg_res = belief_value_recursive(m_tuple..., h;rewardfunction=multirew)
+    pg_res = belief_value_recursive(m_tuple[1], m_tuple[3:end]..., h;rewardfunction=multirew)
     # @info pg_res
     # @info pg_res[1]==pg_res[2]
     s_one = sum([1*discount(m)^(x-1) for x in 1:h])
@@ -213,9 +262,9 @@ end
     h=60
     runs=30000#50000
     m_tuple = get_policy(rs; solver=solver)
-    pg_res = belief_value_polgraph(m_tuple..., h)
+    pg_res = belief_value_polgraph(m_tuple[1], m_tuple[3:end]..., h)
     @info pg_res[1]
-    recur_res = belief_value_recursive(m_tuple..., h)[1]
+    recur_res = belief_value_recursive(m_tuple[1], m_tuple[3:end]..., h)[1]
     @info recur_res
     @show pg_res[1]-recur_res
     @test isapprox(pg_res[1],recur_res;atol=0.0001)
@@ -240,6 +289,32 @@ end
     @test vector_test_r(cb;h=testh,runs=nruns)
     @test vector_test_r(mh;h=testh,runs=nruns)
     @test vector_test_r(tm;h=testh,runs=nruns)
+end
+
+@testset "PolicyGraph Simulation" begin
+    m_tuple = get_policy(tiger; solver=SARSOPSolver(;max_time=10.0))
+    pg = gen_polgraph(m_tuple[1], m_tuple[3:end]..., 30)
+    up = PolicyGraphUpdater(pg)
+    b0 = initialize_belief(up,initialstate(tiger))
+    @test b0.node == pg.node1
+    for (i,n) in enumerate(pg.nodes)
+        a = action(pg,PolicyGraphBelief(i))
+        @test action(pg,PolicyGraphBelief(i)) == n
+        for o in observations(tiger)
+            @test update(up,PolicyGraphBelief(i),a,o).node == pg.edges[(i,o)]
+        end
+    end
+end
+
+@testset "Simulations" begin
+    runs=200000
+    h=200
+    m_tuple = get_policy(tiger; solver=SARSOPSolver(;max_time=10.0))
+    pg = gen_polgraph(m_tuple[1], m_tuple[3:end]..., 30)
+
+    @test compare_pg_sims_rollout(m_tuple..., pg;h=h,runs=runs)
+    @show pg_res = belief_value_polgraph(m_tuple[1], m_tuple[3:end]..., h)[1]
+    # compare_pg_sims_rollout(m_tuple..., pg, pg_res;h=h,runs=runs)
 end
 
 # @testset "GridWorldPOMDP" begin
