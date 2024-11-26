@@ -43,8 +43,11 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::Spar
                     
                     if !isterminalbelief(s_pomdp,bp)
                         gen_polgraph(m,s_pomdp,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,depth_list)
+                    else #Create loops for terminal beliefs
+                        for o2 in axes(s_pomdp.O[a],2)
+                            push!(edge_list, (j, oo[o2]) => j)
+                        end
                     end
-
                 end
             end    
         end
