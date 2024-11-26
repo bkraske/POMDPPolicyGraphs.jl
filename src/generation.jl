@@ -27,7 +27,7 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::Spar
         for o in axes(obs,2)
             bp = corrector(s_pomdp, pred, a_old, o)
             po = sum(bp)
-            if po > 0. && !isterminalbelief(s_pomdp,bp)
+            if po > 0.
                 bp.nzval ./= po
                 bp_idx = findall(x->x==bp, b_list)
                 if !isempty(bp_idx) #bp ∈ b_list
@@ -40,8 +40,11 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::Spar
                     # @show Vector.(b_list)
                     j = copy(length(action_list))
                     push!(edge_list, (j_old, oo[o]) => j)
+                    
+                    if !isterminalbelief(s_pomdp,bp)
+                        gen_polgraph(m,s_pomdp,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,depth_list)
+                    end
 
-                    gen_polgraph(m,s_pomdp,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,depth_list)
                 end
             end    
         end

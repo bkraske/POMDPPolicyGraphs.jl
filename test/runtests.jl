@@ -3,6 +3,7 @@ using POMDPs, POMDPTools, NativeSARSOP
 using RockSample, POMDPModels
 using Statistics
 using Test
+using FiniteHorizonPOMDPs
 
 rs = RockSamplePOMDP(5,7)
 tiger = TigerPOMDP()
@@ -230,6 +231,24 @@ function vector_test_r(m::POMDP; solver=SARSOPSolver(;max_time=10.0),h=15,runs=1
     return pg_res[1]==pg_res[2]&&compare_r_rollout_vec(m_tuple..., pg_res,
     multirew,3;h=h,runs=runs) 
     #&& isapprox(s_one,pg_res[3];atol=0.0001)
+end
+
+function depth_check(pomdp,h)
+    pomdp = fixhorizon(pomdp,h)
+    m_tuple = get_policy(pomdp; solver=SARSOPSolver(;max_time=10.0))
+    pg = gen_polgraph(m_tuple[1], m_tuple[3:end]..., 30;store_bels=true)
+    s_pomdp = EvalTabularPOMDP(pomdp)
+    max_depth_list = pg.node_depth .== maximum(pg.node_depth)
+    for i in eachindex(pg.beliefs)
+        if max_depth_list[i]
+            @test POMDPPolicyGraphs.isterminalbelief(s_pomdp,pg.beliefs[i])
+        end
+    end
+    # @test maximum(pg.node_depth) == h+1
+end
+
+@testset "Graph Depth and Terminal States" begin
+    depth_check(rs,10)
 end
 
 @testset "Policy Graph" begin

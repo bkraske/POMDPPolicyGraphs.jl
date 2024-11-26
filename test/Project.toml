@@ -1,4 +1,5 @@
 [deps]
+FiniteHorizonPOMDPs = "8a13bbfe-798e-11e9-2f1c-eba9ee5ef093"
 NativeSARSOP = "a07c76ea-660d-4c9a-8028-2e6dbd212cb8"
 POMDPModels = "355abbd5-f08e-5560-ac9e-8b5f2592a0ca"
 POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
