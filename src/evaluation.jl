@@ -227,8 +227,7 @@ function calc_belvalue_polgraph(pg::PolicyGraph, result::Array, b::DiscreteBelie
         val_mat = b.b' * first_node
         return val_mat'
     else
-        throw("Belief and result columns are different
-              sizes: $(length(support(b))), $(size(first_node)[1])")
+        throw("Belief and result columns are different sizes: $(length(support(b))), $(size(first_node)[1])")
     end
 end
 ##Get value from belief and state values

@@ -19,7 +19,7 @@ end
 """
 function gen_polgraph end
 
-function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa, depth_list)
+function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::SparseVector, depth::Int, action_list, edge_list, b_list, d, j_old, a_old, oo, oa, depth_list, depth_warn)
     if d < depth
         d+=1
         obs = s_pomdp.O[a_old]
@@ -42,7 +42,7 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::Spar
                     push!(edge_list, (j_old, oo[o]) => j)
                     
                     if !isterminalbelief(s_pomdp,bp)
-                        gen_polgraph(m,s_pomdp,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,depth_list)
+                        gen_polgraph(m,s_pomdp,pol,bp,depth,action_list,edge_list,b_list,d,j,a,oo,oa,depth_list,depth_warn)
                     else #Create loops for terminal beliefs
                         for o2 in axes(s_pomdp.O[a],2)
                             push!(edge_list, (j, oo[o2]) => j)
@@ -51,10 +51,16 @@ function gen_polgraph(m::POMDP, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::Spar
                 end
             end    
         end
+    else
+        if depth_warn[1] == false
+            @warn "Max depth termination criteria reached. Policy graph and policy may not be equivalent."
+            depth_warn[1] = true
+        end
     end
 end
 
 function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, pol::Policy, b0::DiscreteBelief, depth::Int; store_beliefs::Bool=false) where {S,A}
+    depth_warn = [false]
     edge_list = Dict{Tuple{Int64,obstype(pol.pomdp)},Int64}()
     action_list = A[]
     b_list = SparseVector{Float64, Int64}[]
@@ -69,7 +75,7 @@ function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, pol::Policy, b0:
     oo = ordered_observations(m)
     oa = ordered_actions(m)
 
-    gen_polgraph(m, s_pomdp, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa, depth_list)
+    gen_polgraph(m, s_pomdp, pol, sparse(b0.b), depth, action_list, edge_list, b_list, d, j, actionindex(m,a), oo, oa, depth_list, depth_warn)
     if !store_beliefs
         return PolicyGraph(action_list, edge_list, 1, SparseVector{Float64, Int64}[],depth_list)
     else
