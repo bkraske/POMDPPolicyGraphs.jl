@@ -83,7 +83,7 @@ function gen_polgraph(m::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, pol::Policy, b0:
     end
 end
 
-function gen_polgraph(m::POMDP{S,A}, pol::Policy, b0::DiscreteBelief, depth::Int; store_bels::Bool=false) where {S,A}
+function gen_polgraph(m::POMDP{S,A}, pol::Policy, b0::DiscreteBelief, depth::Int; store_beliefs::Bool=false) where {S,A}
     s_pomdp = EvalTabularPOMDP(m)
-    return gen_polgraph(m, s_pomdp, pol, b0, depth; store_beliefs=store_bels)
+    return gen_polgraph(m, s_pomdp, pol, b0, depth; store_beliefs=store_beliefs)
 end

@@ -236,7 +236,7 @@ end
 function depth_check(pomdp,h)
     pomdp = fixhorizon(pomdp,h)
     m_tuple = get_policy(pomdp; solver=SARSOPSolver(;max_time=10.0))
-    pg = gen_polgraph(m_tuple[1], m_tuple[3:end]..., 30;store_bels=true)
+    pg = gen_polgraph(m_tuple[1], m_tuple[3:end]..., 30;store_beliefs=true)
     s_pomdp = EvalTabularPOMDP(pomdp)
     max_depth_list = pg.node_depth .== maximum(pg.node_depth)
     for i in eachindex(pg.beliefs)
