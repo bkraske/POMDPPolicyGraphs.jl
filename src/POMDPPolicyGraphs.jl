@@ -26,6 +26,7 @@ belief_value_polgraph,
 belief_value_recursive,
 PolicyGraph,
 PolicyGraphBelief,
-PolicyGraphUpdater
+PolicyGraphUpdater,
+edges
 
 end # module

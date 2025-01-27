@@ -87,3 +87,8 @@ function gen_polgraph(m::POMDP{S,A}, pol::Policy, b0::DiscreteBelief, depth::Int
     s_pomdp = EvalTabularPOMDP(m)
     return gen_polgraph(m, s_pomdp, pol, b0, depth; store_beliefs=store_beliefs)
 end
+
+function edges(pg::PolicyGraph,node::Int)
+    list = [x[1]== node ? x : nothing for x in keys(pg.edges)]
+    return filter!(x->!isnothing(x),list)
+end
