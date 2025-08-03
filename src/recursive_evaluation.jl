@@ -141,6 +141,12 @@ function belief_value_recursive(pomdp::POMDP{S,A}, pol::Policy, b::DiscreteBelie
     return r
 end
 
+function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, pol::Policy, b::DiscreteBelief, depth::Int) where {S,A} #TYLER
+    d = 1
+    r = belief_value_recursive(pomdp, s_pomdp, pol, sparse(b.b), depth, d)
+    return r
+end
+
 function belief_value_recursive(pomdp::POMDP{S,A}, s_pomdp::EvalTabularPOMDP, pol::Policy, b::SparseVector{Float64, Int64}, depth::Int, d::Int) where {S,A}
     a=action_from_vec(pomdp,pol, b)
     value = belief_reward(s_pomdp,b,a)
